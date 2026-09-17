@@ -1,3 +1,4 @@
+* text=auto eol=lf
 # Scripts must stay LF so bash on every OS can run them.
 *.sh text eol=lf
 hooks/* text eol=lf
