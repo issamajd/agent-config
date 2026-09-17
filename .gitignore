@@ -1,0 +1,15 @@
+# per-machine state, never shared
+.machine
+.sync.log
+
+# live tool config lives outside this repo; only sanitized templates/ are committed
+config.toml
+auth.json
+.credentials.json
+settings.json
+settings.local.json
+.env
+*.local.*
+
+.DS_Store
+Thumbs.db

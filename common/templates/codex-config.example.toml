@@ -1,0 +1,35 @@
+# Starting point for ~/.codex/config.toml. Copy, then fill the <placeholders>.
+# The live file is never committed: it holds credentials and machine paths.
+
+model = "gpt-6-astra"
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+
+# Windows only
+# [windows]
+# sandbox = "unelevated"
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+
+[mcp_servers.atlassian]
+url = "https://mcp.atlassian.com/v2/mcp"
+
+# SQL Server access for the dotnet profile. Fill from your local secrets.
+# [mcp_servers.mssql]
+# command = "npx"
+# args = ["-y", "mcp-node-mssql"]
+# startup_timeout_sec = 60.0
+# enabled_tools = ["get_tables", "get_stored_procedures", "query"]
+# [mcp_servers.mssql.env]
+# DB_HOST = "<host\\instance>"
+# DB_PORT = "1433"
+# DB_DATABASE = "<database>"
+# DB_USERNAME = "<user>"
+# DB_PASSWORD = "<db-password>"
+# DB_ENCRYPT = "true"
+# DB_TRUST_SERVER_CERTIFICATE = "true"
+# [mcp_servers.mssql.tools.query]
+# approval_mode = "prompt"

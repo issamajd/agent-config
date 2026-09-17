@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Rejects commits that add machine-local config files or anything that looks like a secret.
+# Installed via `git config core.hooksPath hooks` by install.sh.
+set -euo pipefail
+status=0
+
+forbidden='(^|/)(config\.toml|auth\.json|\.credentials\.json|settings\.json|settings\.local\.json|\.env|\.machine)$'
+while IFS= read -r f; do
+  if printf '%s' "$f" | grep -Eq "$forbidden"; then
+    echo "pre-commit: '$f' is a machine-local file and must not be committed." >&2
+    status=1
+  fi
+done < <(git diff --cached --name-only --diff-filter=AM)
+
+secret='(password|passwd|secret|api[_-]?key|token)[[:space:]]*[:=][[:space:]]*["'"'"']?[^"'"'"'<[:space:]]{6,}|BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}'
+if git diff --cached --diff-filter=AM -U0 -- . ':!hooks/pre-commit' | grep -E '^\+' | grep -Ev '^\+\+\+' | grep -Ein "$secret"; then
+  echo "pre-commit: the staged lines above look like secrets. Use a <placeholder> in templates/ instead." >&2
+  status=1
+fi
+
+exit $status

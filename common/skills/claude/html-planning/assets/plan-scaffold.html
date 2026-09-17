@@ -1,0 +1,258 @@
+<!--
+  PLAN SCAFFOLD — a STARTING POINT, not a mold.
+  Aesthetic: CLEAN MINIMAL SAAS — white/slate base, a single indigo accent, flat
+  surfaces, hairline borders, whitespace-forward, sharp typography. Boardroom-ready,
+  calm, not decorative. Restraint is the point: earn attention with spacing and type
+  hierarchy, not shadows or gradients.
+
+  This handles the boring-but-required Artifact plumbing so you can spend your
+  attention on the plan itself:
+    • body-content only (no <!doctype>/<html>/<head>/<body> — Artifact wraps it)
+    • theme-aware: styled for BOTH light (primary) and dark; the viewer's toggle
+      stamps data-theme on :root and that must win in both directions
+    • responsive: no horizontal page scroll; the files table scrolls inside itself
+    • self-contained: all CSS inline; no external fonts/scripts/images (CSP blocks them),
+      so this leans on a refined system stack + a mono accent for labels
+
+  Fill every {{ placeholder }} with real content. Keep the CORE sections (Overview,
+  Steps, Files, Verification, Risks). DELETE the optional ones (Prerequisites, Out of
+  scope, Success criteria) when a given plan doesn't need them — a section padded with
+  filler is worse than no section. Retune spacing/accent per the frontend-design skill;
+  keep the theming + responsiveness mechanics.
+-->
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-tint: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e7ebf0;
+    --border-strong: #d3dae2;
+    --ink: #0f172a;
+    --ink-soft: #475569;
+    --ink-faint: #94a3b8;
+    --accent: #4f46e5;
+    --accent-ink: #4338ca;
+    --accent-tint: #eef2ff;
+    --ok: #059669;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --maxw: 780px;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f19; --bg-tint: #0f1523; --surface: #111827; --surface-2: #0f1523;
+      --border: #212a3b; --border-strong: #2c374d;
+      --ink: #eef2f8; --ink-soft: #a3b0c4; --ink-faint: #64748b;
+      --accent: #818cf8; --accent-ink: #a5b4fc; --accent-tint: #1c1f3a;
+      --ok: #34d399; --warn: #fbbf24; --danger: #f87171;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff; --bg-tint: #f8fafc; --surface: #ffffff; --surface-2: #f8fafc;
+    --border: #e7ebf0; --border-strong: #d3dae2;
+    --ink: #0f172a; --ink-soft: #475569; --ink-faint: #94a3b8;
+    --accent: #4f46e5; --accent-ink: #4338ca; --accent-tint: #eef2ff;
+    --ok: #059669; --warn: #d97706; --danger: #dc2626;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0f19; --bg-tint: #0f1523; --surface: #111827; --surface-2: #0f1523;
+    --border: #212a3b; --border-strong: #2c374d;
+    --ink: #eef2f8; --ink-soft: #a3b0c4; --ink-faint: #64748b;
+    --accent: #818cf8; --accent-ink: #a5b4fc; --accent-tint: #1c1f3a;
+    --ok: #34d399; --warn: #fbbf24; --danger: #f87171;
+  }
+
+  * { box-sizing: border-box; }
+  .plan { font-family: var(--font); color: var(--ink); background: var(--bg);
+    line-height: 1.62; max-width: var(--maxw); margin: 0 auto; padding: 56px 24px 96px;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  .plan h1, .plan h2, .plan h3 { margin: 0; line-height: 1.2; }
+  .plan p { margin: 0; }
+
+  /* Header */
+  .head { border-bottom: 1px solid var(--border); padding-bottom: 30px; }
+  .kicker { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono);
+    font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-ink);
+    font-weight: 600; }
+  .kicker::before { content: ""; width: 20px; height: 1.5px; background: var(--accent); }
+  .title { font-size: clamp(28px, 5vw, 40px); font-weight: 700; letter-spacing: -0.03em;
+    margin: 16px 0 14px; }
+  .lede { font-size: 17.5px; color: var(--ink-soft); max-width: 60ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 0; margin-top: 26px;
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .meta > div { flex: 1 1 130px; padding: 12px 16px; border-right: 1px solid var(--border); }
+  .meta > div:last-child { border-right: 0; }
+  .meta dt { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 3px; }
+  .meta dd { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
+
+  /* Section framing */
+  .section { margin-top: 52px; }
+  .section > h2 { display: flex; align-items: baseline; gap: 12px; font-size: 12px;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--ink-faint);
+    font-family: var(--mono); font-weight: 600; margin-bottom: 22px; }
+  .section > h2 .num { color: var(--accent); }
+  .section > h2 .rule { flex: 1; height: 1px; background: var(--border); }
+  .prose { color: var(--ink-soft); font-size: 15.5px; max-width: 64ch; }
+  .prose strong { color: var(--ink); font-weight: 650; }
+
+  /* Steps — flat timeline */
+  .steps { position: relative; margin-left: 4px; }
+  .steps::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px;
+    width: 1px; background: var(--border); }
+  .step { position: relative; padding: 0 0 26px 48px; }
+  .step:last-child { padding-bottom: 0; }
+  .step__n { position: absolute; left: 0; top: -2px; width: 32px; height: 32px; display: grid;
+    place-items: center; border-radius: 9px; font-size: 13.5px; font-weight: 650; font-family: var(--mono);
+    color: var(--accent-ink); background: var(--surface); border: 1px solid var(--border-strong); }
+  .step__title { font-size: 16.5px; font-weight: 650; letter-spacing: -0.01em; margin-bottom: 5px; }
+  .step__body { color: var(--ink-soft); font-size: 15px; }
+  .step__meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-family: var(--mono); font-size: 11.5px; padding: 3px 9px; border-radius: 6px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--ink-soft); }
+  code, .plan code { font-family: var(--mono); font-size: .86em; color: var(--accent-ink);
+    background: var(--accent-tint); padding: 1.5px 6px; border-radius: 5px; }
+  .phase { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 4px 0 16px 48px; }
+  .phase:first-child { margin-top: 0; }
+
+  /* Files table */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  table.files { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 440px; }
+  table.files th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600; padding: 11px 16px;
+    background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  table.files td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--ink-soft); vertical-align: top; }
+  table.files tr:last-child td { border-bottom: 0; }
+  table.files td.path { font-family: var(--mono); font-size: 13px; color: var(--ink); white-space: nowrap; }
+  .badge { font-family: var(--mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: .04em; }
+  .badge--new { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .badge--edit { color: var(--accent-ink); background: var(--accent-tint); }
+  .badge--del { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+
+  /* Lists */
+  .list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  .list li { position: relative; padding-left: 26px; color: var(--ink-soft); font-size: 15px; }
+  .list li::before { content: ""; position: absolute; left: 4px; top: 9px; width: 6px; height: 6px;
+    border-radius: 2px; background: var(--accent); }
+  .list--warn li::before { background: var(--warn); }
+  .list--muted li::before { background: var(--ink-faint); }
+  .list--check li { padding-left: 30px; }
+  .list--check li::before { content: ""; left: 3px; top: 3px; width: 15px; height: 15px; border-radius: 5px;
+    background: transparent; border: 1.5px solid var(--ok); }
+  .list--check li::after { content: ""; position: absolute; left: 8px; top: 6px; width: 4px; height: 8px;
+    border: solid var(--ok); border-width: 0 1.5px 1.5px 0; transform: rotate(42deg); }
+  .list b { color: var(--ink); font-weight: 640; }
+
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border);
+    font-size: 13.5px; color: var(--ink-faint); }
+  .footer b { color: var(--ink-soft); font-weight: 600; }
+</style>
+
+<div class="plan">
+  <header class="head">
+    <div class="kicker">Implementation Plan</div>
+    <h1 class="title">{{ Plan title — the outcome, not the task }}</h1>
+    <p class="lede">{{ One or two sentences: what we're building and, in a clause, why this is the right approach. }}</p>
+    <dl class="meta">
+      <div><dt>Scope</dt><dd>{{ Small / Medium / Large }}</dd></div>
+      <div><dt>Steps</dt><dd>{{ N }}</dd></div>
+      <div><dt>Files</dt><dd>{{ N }}</dd></div>
+      <div><dt>Effort</dt><dd>{{ ~2h / ~1d }}</dd></div>
+    </dl>
+  </header>
+
+  <!-- CORE — keep -->
+  <section class="section">
+    <h2><span class="num">01</span> Overview <span class="rule"></span></h2>
+    <p class="prose">{{ The situation and the goal. What exists today, what should exist after, and the
+      reasoning behind the chosen approach — the "why this way, not that way." This is where a plan earns
+      trust, so make the rationale explicit rather than leaving it implied in the steps. }}</p>
+  </section>
+
+  <!-- OPTIONAL — delete if nothing real to say -->
+  <section class="section">
+    <h2><span class="num">02</span> Prerequisites &amp; assumptions <span class="rule"></span></h2>
+    <ul class="list list--muted">
+      <li>{{ Something that must be true / already in place before starting. }}</li>
+      <li>{{ An assumption you're making that, if wrong, changes the plan. }}</li>
+    </ul>
+  </section>
+
+  <!-- CORE — keep -->
+  <section class="section">
+    <h2><span class="num">03</span> Steps <span class="rule"></span></h2>
+    <!-- Group under phase labels for larger plans; delete the .phase divs for short ones. -->
+    <div class="phase">Phase 1 · {{ Foundation }}</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step__n">1</div>
+        <div class="step__title">{{ Imperative step title }}</div>
+        <div class="step__body">{{ What happens and how, naming concrete files/functions. Surface a rejected
+          alternative in a clause when there was a real fork. Use <code>path/to/file</code>. }}</div>
+        <div class="step__meta"><span class="tag">{{ src/foo.ts }}</span><span class="tag">{{ ~30 lines }}</span></div>
+      </div>
+      <div class="step">
+        <div class="step__n">2</div>
+        <div class="step__title">{{ Next step }}</div>
+        <div class="step__body">{{ ... }}</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CORE — keep -->
+  <section class="section">
+    <h2><span class="num">04</span> Files affected <span class="rule"></span></h2>
+    <div class="tablewrap">
+      <table class="files">
+        <thead><tr><th>File</th><th>Change</th><th>What &amp; why</th></tr></thead>
+        <tbody>
+          <tr><td class="path">{{ path/to/file.ext }}</td><td><span class="badge badge--new">new</span></td><td>{{ what it does }}</td></tr>
+          <tr><td class="path">{{ path/to/other.ext }}</td><td><span class="badge badge--edit">edit</span></td><td>{{ what changes }}</td></tr>
+          <tr><td class="path">{{ path/to/old.ext }}</td><td><span class="badge badge--del">delete</span></td><td>{{ why it goes }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CORE — keep -->
+  <section class="section">
+    <h2><span class="num">05</span> Testing &amp; verification <span class="rule"></span></h2>
+    <ul class="list">
+      <li>{{ How you'll prove it works — the command to run, the test to add, the behavior to observe. }}</li>
+      <li>{{ Edge cases / regressions to check. }}</li>
+    </ul>
+  </section>
+
+  <!-- CORE — keep -->
+  <section class="section">
+    <h2><span class="num">06</span> Risks &amp; open questions <span class="rule"></span></h2>
+    <ul class="list list--warn">
+      <li><b>{{ Risk / decision:}}</b> {{ a real tradeoff, assumption, or a fork you need the user to confirm
+        before proceeding. Pull decisions here so they're vetoable, don't bury them in steps. }}</li>
+    </ul>
+  </section>
+
+  <!-- OPTIONAL — delete if it's obvious -->
+  <section class="section">
+    <h2><span class="num">07</span> Out of scope <span class="rule"></span></h2>
+    <ul class="list list--muted">
+      <li>{{ Something a reader might expect you to do that you're deliberately not doing this pass. }}</li>
+    </ul>
+  </section>
+
+  <!-- OPTIONAL — delete if steps already make "done" obvious -->
+  <section class="section">
+    <h2><span class="num">08</span> Success criteria <span class="rule"></span></h2>
+    <ul class="list list--check">
+      <li>{{ A concrete, checkable statement of what "done" means. }}</li>
+      <li>{{ Another one. }}</li>
+    </ul>
+  </section>
+
+  <p class="footer"><b>Reply to approve</b>, or tell me what to change and I'll revise this plan.</p>
+</div>
