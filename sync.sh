@@ -6,7 +6,9 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 cd "$REPO"
 
-if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+if ! git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+  echo "sync: no upstream branch configured, skipping pull" >&2
+elif [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   echo "sync: uncommitted changes in $REPO, skipping pull" >&2
 else
   git pull --ff-only --quiet
