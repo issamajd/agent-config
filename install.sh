@@ -132,7 +132,7 @@ echo "CLAUDE.md -> $CLAUDE_DIR/CLAUDE.md"
   echo "This file is $MARKER. Edit the imported files in $(native_path "$REPO") instead; imports are read live."
   echo
   for layer in "${LAYERS[@]}"; do
-    [ -f "$layer/claude.md" ] && echo "@$(native_path "$layer/claude.md")"
+    if [ -f "$layer/claude.md" ]; then echo "@$(native_path "$layer/claude.md")"; fi
   done
 } | write_if_changed "$CLAUDE_DIR/CLAUDE.md"
 
