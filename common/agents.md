@@ -16,6 +16,10 @@ Here are my preferences so we can be more aligned as we work together.
 - Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc.
 - Keep comments up to date! When making changes, it's important to keep things in sync.
 
+## UI and design
+
+- For generated frontends, HTML pages and artifacts, default to a clean minimal SaaS look: white/slate base, a single indigo accent (#4f46e5), flat surfaces, hairline borders, generous whitespace, sharp typography, no gradients or glow. Avoid the cream/terracotta "Anthropic" palette. When the direction is genuinely open, offer concrete options instead of guessing.
+
 ## Questions are read-only
 
 - A question is a request for an answer, not for changes. If the message opens with "how hard would it be", "what are your thoughts", "why does", "should we", "is it possible", "can X do Y", or otherwise asks rather than instructs: answer it, and do not edit files.
