@@ -19,6 +19,20 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 - The `span.framework` strong-name key container is not visible from agent shells (`CS7028 ... Keyset does not exist`). Build with `-p:KeyContainerName= -p:SignAssembly=true -p:AssemblyOriginatorKeyFile=<repo>\BUILD\keys\span.framework.snk`. It produces the same public key token (`df6ba8a58f791570`); the CS1616 warning is expected.
 - Many SPAN csprojs set `EnableDefaultCompileItems=false`. Add a `<Compile Include="..." />` for every new `.cs` file, or the build fails with CS0246.
 
+## XAL framework (rndfwcore) traps
+
+- `DataFilter` fails fast when a value's runtime type disagrees with its declared `DataType` ("DataFilter 'X' is declared as A but the value is B"). Numerics widen into each other, `DataType.Unknown` is skipped, and bools or "0"/"1"/"true"/"false" strings pass for any type. An empty string does not.
+- `FiltersHelper.ExtractFilters(DataRow)` types each filter from the SQL column type, so `filters[x].Value = <DateTime>` on a filter that came from an nvarchar column throws. Use `AddOrReplace` with a typed filter, and when this fires check the source tables' column types, not the screen metadata.
+- `Filter.GetListFilter(..., params object[])` receives a `ColumnSchema` as an object (the implicit string conversion doesn't apply to `params object[]`). Mixing it with string literals throws "All types must match for the DataFilter". Pass `.Name`.
+- `DataHelper.GetString(DBNull)` returns null, not "".
+
+## XAL server (local dev)
+
+- The running server.console loads logic DLLs from `<repo>\BUILD\RUNTIME\dlls\logic`, not from the project's bin folder. To test a logic change: the user stops the elevated server, you copy the rebuilt DLL there (or run `BUILD\DispatchAllFiles.bat`), and the user starts it again. Any public BL/BP class in a logic DLL is callable by name via reflection; no registration is needed.
+- To find which copy of a DLL is live, use a non-destructive lock test: `[IO.File]::Open(path,'Open','ReadWrite','None')` in try/catch. Never `: > file`; it truncates the file to 0 bytes.
+- "System Error: Contact admin" on a client is `server.errorfilter.ErrorFilter` masking the real exception. Set the ERRORFILTER module's `ShowErrors` StartUpParameter to true in `BUILD\RUNTIME\applications\server.config.xml` to see it.
+- BP/BL exceptions on the mobile path are not written to `master.EVENTLOG` or `APPLICATIONLOG`. Without `ShowErrors` the stack trace only appears in the elevated server.console window. Client-side errors (DataFilter checks, swallowed exceptions) only show in logcat under tag `DOTNET`; add a temporary `Console.WriteLine` in a silent catch to surface one.
+
 ## Base runtime replay (pipeline-shared)
 
 - `BUILD\Update-BaseRuntime.ps1` installs the parent versions pinned in `BUILD\baseruntime.lock.json` and never picks up a newer parent by itself. After a parent publishes, run `.\Update-BaseRuntime.ps1 -TargetVersion <new>` (try `-WhatIf` first) in each child's BUILD folder and commit the lock before running that repo's pipeline.
