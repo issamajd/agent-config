@@ -61,3 +61,12 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 - A startup crash loop with a `System.SR` StackOverflow and no app frames means a corrupt fast-deploy base. Fix it with `-t:Run -p:EmbedAssembliesIntoApk=true -p:AndroidFastDeploymentType=`. Don't follow a bare `dotnet build` with an incremental `-t:Run` onto the device.
 - Never `adb uninstall`: it wipes the app's connection settings. The server endpoint lives per device in `shared_prefs` and goes stale when the host IP changes. Use `adb reverse tcp:<port> tcp:<port>` and point the app at `127.0.0.1` (force-stop the app before editing `shared_prefs`).
 - If a build hangs with low CPU, adb may be holding stdout: run `adb kill-server` and retry.
+
+## Azure DevOps Server
+
+- Web root is `http://devops:8050`. Git remotes look like
+  `ssh://devops:22/<Collection>/<Project>/_git/<repo>` (rndfwcore: collection `RNDFWCORE`,
+  project `RNDFWCORE`, repo `rndfwcore`); the ssh host and port say nothing about the web port.
+- The REST API accepts Windows auth from agent shells: `curl --negotiate -u : <url>`. No PAT is
+  needed. Use `api-version=7.0`. Read-only use only: never upload files or attachments to it.
+- There is no `az` CLI on this machine; use curl.
