@@ -1,0 +1,4 @@
+interface:
+  display_name: "MEmu Testing"
+  short_description: "Test a MAUI Android app visually in MEmu"
+  default_prompt: "Use $memu-testing to launch the app in MEmu, exercise the requested UI, and report defects."
