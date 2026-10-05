@@ -24,7 +24,7 @@ agents/              Claude subagents (*.md), linked as a subfolder of ~/.claude
 ## First install on a machine
 
 ```bash
-git clone --recurse-submodules git@github.com:issamajd/agent-config.git ~/agent-config
+git clone git@github.com:issamajd/agent-config.git ~/agent-config
 cd ~/agent-config
 ./install.sh --machine <short-name> --profile <dotnet|typescript>
 git add machines/<short-name> && git commit -m "Add machine <short-name>" && git push
@@ -53,19 +53,6 @@ directory; say yes.
   `./install.sh --profile <name>`.
 - **Machine**: see "First install".
 - **Subagent**: drop a `.md` into a layer's `agents/`.
-
-## Nested skill repos
-
-`profiles/dotnet/skills/shared/mobile-screen-generator` is a git submodule of
-`issamajd/mobile-screen-gen`. After committing inside it, record the new revision here:
-
-```bash
-git add profiles/dotnet/skills/shared/mobile-screen-generator
-git commit -m "Bump mobile-screen-generator"
-```
-
-`sync.sh` checks submodules out at the recorded revision.
-
 ## What stays out of the repo
 
 `~/.claude/settings.json` and `~/.codex/config.toml` hold secrets and machine paths and are never

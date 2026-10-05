@@ -13,6 +13,5 @@ elif [ -n "$(git status --porcelain --untracked-files=no)" ]; then
 else
   git pull --ff-only --quiet
 fi
-git submodule update --init --recursive --quiet
 
 exec "$REPO/install.sh"

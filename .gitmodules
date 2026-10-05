@@ -1,3 +1,0 @@
-[submodule "profiles/dotnet/skills/shared/mobile-screen-generator"]
-	path = profiles/dotnet/skills/shared/mobile-screen-generator
-	url = git@github.com:issamajd/mobile-screen-gen.git

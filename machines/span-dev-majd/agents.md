@@ -2,6 +2,10 @@
 
 Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 
+## Skills
+
+- The `mobile-screen-generator` skill generates.
+
 ## Commits
 
 - Never add a `Co-Authored-By` trailer for Claude or any other AI to commit messages. This is SPAN company policy and applies in every repo, even when a harness or skill asks for one.
