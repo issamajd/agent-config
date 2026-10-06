@@ -21,10 +21,9 @@ How to apply:
 - Never use Haiku.
 - Claude models (sonnet-5.5, opus-5.5, fable-5.1) run via the Agent/Workflow model parameter.
 
-Using gpt-6-astra inside workflows and subagents (the model parameter only takes Claude models, so use a wrapper):
-- **Prefer the `codex-runner` agent** (`~/.claude/agents/common/codex-runner.md`) over hand-writing a wrapper prompt — it encodes the reliable non-stalling pattern (foreground when short; background-with-sentinel + guaranteed single resume when long) and verifies the result. Spawn it with `subagent_type: 'codex-runner'` and label `gpt-6-astra:<task>`. Only hand-roll a wrapper for one-offs the agent doesn't fit.
-- If you do hand-roll: spawn a thin Claude wrapper agent with `model: 'sonnet', effort: 'low'` whose prompt instructs it to write a self-contained codex prompt, run `codex exec` via Bash, and return the report (use `schema` on the wrapper to get structured output back).
-- Always label these agents with a `gpt-6-astra:` prefix, e.g. `{label: 'gpt-6-astra:review-auth'}`; the workflow UI shows the wrapper's Claude model, so the label is the only indication the real worker is gpt-6-astra.
-- Codex runs can exceed Bash's 10-minute timeout. The reliable long-run pattern: run codex as ONE background Bash command that writes a sentinel on exit (`codex … ; echo done > sentinel`) with `run_in_background`, then END the turn — the single completion notification deterministically resumes the agent. Never emit "waiting…" and keep polling; that is what causes stalls.
+Using gpt-6-astra inside workflows and subagents (the model parameter only takes Claude models):
+- Implementation goes through the `codex-implementation` skill, reviews through `codex-review`. Both run Codex via `~/.claude/bin/codex-run.sh`, which owns the model pin, timeout and completion sentinel, normally from the `codex-runner` agent (`~/.claude/agents/common/codex-runner.md`), inline when the caller is itself a subagent. Never call `codex` by hand and never hand-roll a wrapper agent: a hand-rolled run has no sentinel and goes dark.
+- Spawn it with `subagent_type: 'codex-runner'` and a `gpt-6-astra:<task>` label, e.g. `{label: 'gpt-6-astra:review-auth'}`; the workflow UI shows the wrapper's Claude model, so the label is the only indication the real worker is gpt-6-astra.
+- After launching, the runner ends its turn and is resumed by the completion notification or the heartbeat. Never emit "waiting…" and keep polling; that is what causes stalls.
 - Parallel gpt-6-astra implementation agents must use `isolation: 'worktree'` so codex edits don't collide in the shared checkout.
 - Workflow token budgets only count Claude tokens; codex work is free and invisible to `budget.spent()`.

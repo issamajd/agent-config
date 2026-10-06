@@ -8,7 +8,7 @@ description: >-
   model-selection rubric routes the work to gpt-6-astra, or when a bounded task
   would benefit from another coding agent producing a patch. Do NOT use for
   trivial edits Claude can make directly, or for review-only work — prefer
-  [[codex-review]] there.
+  `codex-review` there.
 ---
 
 # Codex Implementation
@@ -30,7 +30,7 @@ hand-roll the invocation; that is how runs go dark.
 
 **When NOT to use:** trivial edits Claude can make directly (faster to just do
 it), sprawling/underspecified work with no clear success criteria, or
-review-only requests — use [[codex-review]] for those.
+review-only requests — use `codex-review` for those.
 
 ## Workflow
 
@@ -49,44 +49,32 @@ mandatory** — include it verbatim, tighten it for the task, never drop it. See
 
 ### 3. Run it
 
-**Default — spawn the `codex-runner` agent.** It owns the launch/observe/verify
-loop, keeps the raw log and build output out of this context, and is the only
-safe way to run several Codex tasks at once:
+Pick a run id, `impl-<short-task>`; it names the run directory and every
+progress line.
 
-- Label the spawn `gpt-6-astra:<short-task>` so the UI shows the real worker.
-- Give it the prompt file path, the repo, and a run id.
+**Default: spawn the `codex-runner` agent** with `--mode exec`, the prompt file
+path, the repo and the run id. It owns the launch, heartbeat, never-stall rules
+and first verification pass, keeps the raw log and build output out of this
+context, and is the only safe way to run several Codex tasks at once:
+
+- Name the spawn `gpt-6-astra:<short-task>` (the Agent tool's `description`, a
+  Workflow's `label`) so the UI shows the real worker.
 - For **parallel batches**, spawn one agent per batch with
   `isolation: 'worktree'` so concurrent Codex edits don't collide.
-- Before spawning, arm a `Monitor` on the run id yourself (see below) — the
-  agent's own progress events are invisible to you and to the user, so the
-  parent watching the shared run directory is what keeps a long batch legible.
+- To follow a long batch yourself, arm a `Monitor` on
+  `~/.claude/bin/codex-run.sh watch --id <id>` before spawning; the agent's own
+  progress events are invisible to you and to the user.
 
-**Inline alternative — a single small task** where you want the diff directly in
-this context. Same two calls [[codex-review]] uses, with `--mode exec`:
+**Run it inline** when you are already a subagent (no nesting) or for a single
+small task where you want the diff and raw log in this context: follow sections
+3 to 5 of `~/.claude/agents/common/codex-runner.md` yourself with `--mode exec`.
+That is the `start` call and the `Monitor` call from section 3, then end the
+turn.
 
-```bash
-# a. launch — Bash tool with run_in_background: true
-~/.claude/bin/codex-run.sh start --mode exec --id impl-parser \
-  --prompt /tmp/codex-impl-prompt.md --repo "$PWD" --timeout 1800
-```
-
-```
-# b. arm the heartbeat immediately, then END YOUR TURN — do not poll
-Monitor({
-  command: '~/.claude/bin/codex-run.sh watch --id impl-parser',
-  description: 'codex impl-parser progress',
-  timeout_ms: 2000000,
-})
-```
-
-Either way: a progress line each minute (`running` / `STALLED` / `ORPHANED`) and
-a terminal line with the exit status. If asked mid-run "what's it doing?", run
-`~/.claude/bin/codex-run.sh status --id impl-parser` instead of guessing.
-
-Check the launch summary before trusting the result: `CODEX_EXIT=0`,
-`CODEX_MODEL=gpt-6-astra` (any other model, or a `CODEX_MODEL_MISMATCH` line,
-means the model pin failed), and a
-non-empty `CODEX_REPORT`. Anything else — read `raw.log` in the run dir and
+Either way, never run `codex` by hand or in the foreground, and check the
+summary block (printed at launch and saved as `summary` in the run directory)
+before trusting the result: `CODEX_EXIT=0`, `CODEX_MODEL=gpt-6-astra` and
+`CODEX_RESULT=ok`. Anything else: read `raw.log` in the run directory and
 report what happened.
 
 ### 4. Inspect the diff — do NOT trust the report alone
@@ -116,8 +104,9 @@ truth**. Never hand a Codex diff back as done without a review pass:
 
 - Run Claude's own `/code-review` (the `code-review` skill) on the resulting
   diff at minimum.
-- For broad or high-stakes changes, also get an independent second opinion via
-  [[codex-review]].
+- For broad or high-stakes changes, run `review-panel` on the diff instead; it
+  picks the reviewers by case, including `codex-review` for an independent
+  second opinion.
 - Read the changed code yourself for correctness, scope creep, and convention
   fit before presenting it.
 

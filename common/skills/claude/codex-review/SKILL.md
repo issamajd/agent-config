@@ -11,70 +11,46 @@ description: >-
 
 # Codex Review
 
-Runs OpenAI Codex CLI (`codex review`, default model **gpt-6-astra**) as an
-independent reviewer of a diff, then relays and triages its findings. Codex reads
-the repo itself and returns a severity-tagged list of issues — a genuinely
+Runs OpenAI Codex CLI (`codex review`, pinned to **gpt-6-astra**) as an
+independent reviewer of a diff, then relays and triages its findings. Codex
+reads the repo itself and returns a severity-tagged list of issues: a genuinely
 separate model's perspective, useful as a second pass on broad or risky changes.
 
 ## When to use this
 
-- The user explicitly asks for Codex / gpt-6-astra / "an independent review" / "a
-  second opinion" / "another agent's take."
+- The user explicitly asks for Codex / gpt-6-astra / "an independent review" /
+  "a second opinion" / "another agent's take."
 - A change is broad, subtle, or high-stakes enough that a fresh outside
-  perspective is worth the extra minutes.
+  perspective is worth the extra minutes. `review-panel` includes it on those
+  grounds.
 
 **When NOT to use:** small, local, or obvious changes. Claude's own
-`/code-review` is faster and sufficient there — don't reach for Codex by default.
-
-## Key facts about the tool (verified on this machine)
-
-- **Never invoke `codex.cmd` directly — use `~/.claude/bin/codex-run.sh`.** That
-  script owns every CLI quirk below plus the launch/observe pattern (predictable
-  run dir, hard timeout, completion sentinel, heartbeat). Calling the CLI by hand
-  is how runs end up invisible.
-- **A scope flag and a custom prompt are mutually exclusive.** In this version,
-  `codex review --uncommitted "…"` / `--base` / `--commit "…"` all error with
-  *"cannot be used with [PROMPT]"*. So the rubric goes in via stdin with **no
-  scope flag**, and the scope is stated *inside* the prompt (first line). This is
-  why step 1 below is "choose the scope line" and not "choose a flag."
-- **Report → stdout, noise → stderr.** The clean verdict + `Full review
-  comments:` list goes to **stdout** with no ANSI; streaming reasoning goes to
-  stderr. `codex-run.sh` splits them into `report.md` and `raw.log` and strips
-  the `SUCCESS: The process…` teardown lines that leak into stdout.
-- **`codex review` has no `-m` flag** — the model is pinned with
-  `-c 'model="gpt-6-astra"'`. The script does this; without it the run silently
-  falls back to whatever `~/.codex/config.toml` defaults to.
-- **It takes minutes, sometimes many.** Never run it in the foreground. Step 2
-  launches it as a tracked background job with a monitor, so a long review
-  reports progress instead of going dark.
+`/code-review` is faster and sufficient there.
 
 ## Workflow
 
 ### 1. Choose the scope line
 
-Exactly one scope, expressed as the **first line** of the prompt (there is no
-scope flag — see above):
+`codex review` rejects a custom prompt combined with a scope flag
+(`--uncommitted`, `--base`, `--commit`), so the scope is the **first line of
+the prompt** instead. Exactly one:
 
-| User intent | Scope line to prepend |
+| User intent | Scope line |
 |---|---|
 | Uncommitted work (staged + unstaged + untracked) | `Review the currently uncommitted changes (staged, unstaged, and untracked files) in this repository.` |
 | Current branch vs. a base | `Review the changes on the current branch compared to the \`main\` branch (git diff main...HEAD).` |
 | A specific commit | `Review the changes introduced by commit \`<sha>\` (git show <sha>).` |
 
-If scope is ambiguous, default to uncommitted when there are local changes,
-otherwise the base-branch line. If the user names an area to focus on, append a
-sentence like `Focus especially on <area>.` to the prompt.
+If the scope is ambiguous, default to uncommitted when there are local changes,
+otherwise the base-branch line. If the user names an area to focus on, append
+`Focus especially on <area>.`
 
-### 2. Write the prompt, then launch + watch
+### 2. Write the prompt file
 
-Pick a short run id (`review-<topic>`, e.g. `review-auth`) — it names the run
-directory and every progress line, so make it recognisable.
-
-**a. Write the prompt file** — scope line, blank line, then the rubric from
-"## Review Prompt":
+Scope line, blank line, then the rubric from "## Review Prompt":
 
 ```bash
-PROMPT=/tmp/codex-review-prompt.md
+PROMPT=/tmp/codex-review-prompt.md   # or a file in your scratchpad directory
 cat > "$PROMPT" <<'EOF'
 Review the currently uncommitted changes (staged, unstaged, and untracked files) in this repository.
 
@@ -84,40 +60,29 @@ Do not edit files. If there are no substantive findings, say so.
 EOF
 ```
 
-**b. Launch it** — Bash tool with **`run_in_background: true`**. That parameter
-is what makes the job harness-tracked, which is what fires the completion
-notification:
+### 3. Run it
 
-```bash
-~/.claude/bin/codex-run.sh start --mode review --id review-auth \
-  --prompt /tmp/codex-review-prompt.md --repo "$PWD" --timeout 1800
-```
+Pick a run id, `review-<topic>`, for example `review-auth`. It names the run
+directory and every progress line.
 
-**c. Immediately arm the heartbeat** — one `Monitor` call, before you do anything
-else:
+**Spawn the `codex-runner` agent** with `--mode review`, the prompt file, the
+repo and the run id when you are the top-level session and want the raw log
+kept out of your context, or this review is one of several things running.
+Name the spawn `gpt-6-astra:review-<topic>` (the Agent tool's `description`, a
+Workflow's `label`). It owns the launch, the heartbeat and the never-stall
+rules, and returns the summary block and `report.md` verbatim.
 
-```
-Monitor({
-  command: '~/.claude/bin/codex-run.sh watch --id review-auth',
-  description: 'codex review-auth progress',
-  timeout_ms: 2000000,
-})
-```
+**Run it inline** when you are already a subagent (no nesting) or want the raw
+log at hand: follow sections 3 to 5 of
+`~/.claude/agents/common/codex-runner.md` yourself with `--mode review`. That
+is the `start` call and the `Monitor` call from section 3, then end the turn.
 
-You now get a progress line each minute (`running` / `STALLED` / `ORPHANED`) and
-a final line with the exit status. **Then end your turn** — do not poll, and do
-not sit in a "waiting…" message. Between the monitor events and the background
-completion notification you will be woken; either one is a valid resume.
+Either way the run takes minutes; never run `codex` in the foreground or by
+hand. The script's default timeout fits a review. The summary block must show
+`CODEX_EXIT=0`, `CODEX_MODEL=gpt-6-astra` and `CODEX_RESULT=ok`; otherwise read
+`raw.log` and say what happened rather than reporting no findings.
 
-If you are ever asked mid-run "what's it doing?", answer with one cheap call —
-`~/.claude/bin/codex-run.sh status --id review-auth` — rather than guessing.
-
-The run leaves `report.md` (the deliverable) and `raw.log` (the full stream) in
-its run directory; the launch output prints both paths as `CODEX_REPORT=` and
-`CODEX_RUN_DIR=`. A non-zero `CODEX_EXIT` or an empty `report.md` means the run
-errored — read `raw.log` and say what happened rather than reporting no findings.
-
-### 3. Read and triage the findings
+### 4. Read and triage the findings
 
 `report.md` holds a one-paragraph verdict followed by:
 
@@ -130,16 +95,16 @@ Full review comments:
   ...
 ```
 
-Severities run `P0`/`P1` (blocking — won't compile, data loss, security) down to
+Severities run `P0`/`P1` (blocking: won't compile, data loss, security) down to
 higher `P#` (nits).
 
-### 4. Relay to the user
+### 5. Relay to the user
 
 - Summarize the findings grouped by severity, with clickable `file:line` refs.
 - If Codex finds nothing, say so clearly and name the review target it inspected.
-- **Codex is an independent model, not ground truth.** Sanity-check each finding
-  against the actual code before presenting it as fact — flag any you disagree
-  with rather than passing them through blindly.
+- **Codex is an independent model, not ground truth.** Check each finding
+  against the actual code before presenting it as fact, and flag any you
+  disagree with rather than passing them through.
 - Do not auto-apply fixes unless the user asks. If they do, verify each change
   against the real code first.
 

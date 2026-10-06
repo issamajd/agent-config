@@ -19,6 +19,7 @@ skills/shared/       skills linked into both tools
 skills/claude/       skills linked into Claude only
 skills/codex/        skills linked into Codex only
 agents/              Claude subagents (*.md), linked as a subfolder of ~/.claude/agents
+bin/                 helper scripts that skills and agents call as ~/.claude/bin/<name> (common layer only)
 ```
 
 ## First install on a machine
@@ -66,6 +67,7 @@ filenames and anything that looks like a password or token.
 | `~/.claude/CLAUDE.md` | generated: one `@import` line per layer |
 | `~/.claude/skills/<name>` | link into the repo (junction on Windows) |
 | `~/.claude/agents/<layer>/` | link into the repo |
+| `~/.claude/bin/` | link to `common/bin` in the repo |
 | `~/.codex/AGENTS.md` | generated: layers concatenated |
 | `~/.codex/skills/<name>` | link into the repo |
 

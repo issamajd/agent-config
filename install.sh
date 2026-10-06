@@ -126,6 +126,13 @@ install_agents() {
 }
 install_agents
 
+# ---------------------------------------------------------------- helper scripts
+# Skills and agents call helpers by a fixed path (~/.claude/bin/<name>), so the
+# whole folder is one link into common/bin. A loose copy there is backed up first.
+echo "bin -> $CLAUDE_DIR/bin"
+if [ -e "$CLAUDE_DIR/bin" ] && [ ! -L "$CLAUDE_DIR/bin" ]; then backup "$CLAUDE_DIR/bin"; fi
+link_dir "$CLAUDE_DIR/bin" "$REPO/common/bin"
+
 # ---------------------------------------------------------------- ~/.claude/CLAUDE.md (imports)
 echo "CLAUDE.md -> $CLAUDE_DIR/CLAUDE.md"
 {
