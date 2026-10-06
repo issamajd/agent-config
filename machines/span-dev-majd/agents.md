@@ -69,5 +69,25 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
   `ssh://devops:22/<Collection>/<Project>/_git/<repo>` (rndfwcore: collection `RNDFWCORE`,
   project `RNDFWCORE`, repo `rndfwcore`); the ssh host and port say nothing about the web port.
 - The REST API accepts Windows auth from agent shells: `curl --negotiate -u : <url>`. No PAT is
-  needed. Use `api-version=7.0`. Read-only use only: never upload files or attachments to it.
-- There is no `az` CLI on this machine; use curl.
+  needed. Use `api-version=7.0`. The only writes allowed are pull request thread comments; never
+  upload files or attachments, edit work items, or change PR state through it.
+- There is no `az` CLI on this machine; use curl. There is no `gh` either: wherever a skill says
+  `gh pr ...`, use the PR commands below.
+
+## Azure DevOps pull requests
+
+- Base URL: `http://devops:8050/<Collection>/<Project>/_apis/git/repositories/<repo>/pullRequests/<id>`.
+  Collection and project come from the repo's `git remote -v`.
+- Diff: there is no diff endpoint. Fetch the PR's merge ref and diff locally:
+  `git fetch origin refs/pull/<id>/merge:refs/remotes/origin/pr/<id>` then
+  `git diff origin/<target>...origin/pr/<id>`. Source and target branches are in the PR JSON
+  (`sourceRefName`, `targetRefName`).
+- Comment: `POST <base>/threads?api-version=7.0` with body
+  `{"comments":[{"parentCommentId":0,"content":"<markdown>","commentType":1}],"status":1}`.
+  Every comment states which model wrote it (the babysit-pr reply header or the review-panel
+  header). Reply to an existing thread with `POST <base>/threads/<threadId>/comments`.
+- Checks: `GET <base>/statuses?api-version=7.0` and the build for `refs/pull/<id>/merge` under
+  `_apis/build/builds?branchName=refs/pull/<id>/merge`. There is no watch command; loop with
+  `sleep 60` in a tracked background command until no status is `pending`.
+- Threads to resolve: `GET <base>/threads`; a thread is closed by `PATCH <base>/threads/<threadId>`
+  with `{"status":4}` (fixed) or `{"status":2}` (won't fix) and a reply saying why.

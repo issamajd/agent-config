@@ -7,8 +7,8 @@ Rankings, higher = better. Cost reflects what I actually pay (OpenAI is near-fre
 | Model    | Cost | Intelligence | Taste |
 | -------- | ---- | ------------ | ----- |
 | gpt-6-astra  | 9    | 8            | 6     |
-| sonnet-5 | 5    | 5            | 6     |
-| opus-5 | 4    | 7            | 9     |
+| sonnet-5.5 | 5    | 5            | 6     |
+| opus-5.5 | 4    | 7            | 9     |
 | fable-5.1  | 2    | 9            | 9     |
 
 How to apply:
@@ -17,9 +17,9 @@ How to apply:
 - Don't let cost prevent you from using the right model for the job. Instead, take advantage of cheaper options to get more information and try things before moving the work to a more expensive option.
 - Bulk/mechanical work (clear-spec implementation, data analysis, migrations): gpt-6-astra — it's effectively free.
 - Anything user-facing (UI, copy, API design) needs taste ≥ 7.
-- Reviews of plans/implementations: fable-5 or opus-5, optionally gpt-6-astra as an extra independent perspective.
+- Reviews of plans/implementations: fable-5.1 or opus-5.5, optionally gpt-6-astra as an extra independent perspective.
 - Never use Haiku.
-- Claude models (sonnet-5, opus-5, fable-5) run via the Agent/Workflow model parameter.
+- Claude models (sonnet-5.5, opus-5.5, fable-5.1) run via the Agent/Workflow model parameter.
 
 Using gpt-6-astra inside workflows and subagents (the model parameter only takes Claude models, so use a wrapper):
 - **Prefer the `codex-runner` agent** (`~/.claude/agents/common/codex-runner.md`) over hand-writing a wrapper prompt — it encodes the reliable non-stalling pattern (foreground when short; background-with-sentinel + guaranteed single resume when long) and verifies the result. Spawn it with `subagent_type: 'codex-runner'` and label `gpt-6-astra:<task>`. Only hand-roll a wrapper for one-offs the agent doesn't fit.
