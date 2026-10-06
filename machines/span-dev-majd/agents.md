@@ -6,6 +6,7 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 
 - The `mobile-screen-generator` skill generates.
 - The `rndscripts-deliverable` skill turns a working SQL change into RNDSCRIPTS deliverable files (source dialect, schema/component split, converter check, TFVC checkout). Use it for any DB change that has to ship.
+- The `xal-server` skill starts, stops, restarts and checks a repo's server.console from an agent shell (`XalServer.ps1`, Windows PowerShell 5.1). Use it instead of asking the user to click Start.
 
 ## Commits
 
@@ -13,7 +14,7 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 
 ## Shells
 
-- Agent shells are not elevated. Anything that needs admin (stopping an elevated server, writing protected folders) goes to the user.
+- Agent shells are not elevated. Anything that needs admin (writing protected folders, driving a window that runs elevated) goes to the user.
 - `NoDefaultCurrentDirectoryInExePath=1` is set: inside `cmd /c`, call tools as `.\tool.exe` or prefix with `set NoDefaultCurrentDirectoryInExePath=&&`.
 - Git Bash path conversion mangles `/Switch` arguments and Android device paths. Set `MSYS_NO_PATHCONV=1` for those commands, or run them from PowerShell.
 - Never edit CRLF files with Git Bash `sed -i`: it silently rewrites them as LF-only. Use PowerShell raw I/O (`[IO.File]::ReadAllText` / `.Replace()` / `WriteAllText(path, text, New-Object Text.UTF8Encoding($false))`) and check that the CR count equals the LF count.
@@ -33,10 +34,10 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 
 ## XAL server (local dev)
 
-- The running server.console loads logic DLLs from `<repo>\BUILD\RUNTIME\dlls\logic`, not from the project's bin folder. To test a logic change: the user stops the elevated server, you copy the rebuilt DLL there (or run `BUILD\DispatchAllFiles.bat`), and the user starts it again. Any public BL/BP class in a logic DLL is callable by name via reflection; no registration is needed.
+- The running server.console loads logic DLLs from `<repo>\BUILD\RUNTIME\dlls\logic`, not from the project's bin folder. To test a logic change: `xal-server` stop, copy the rebuilt DLL there (or run `BUILD\DispatchAllFiles.bat`), `xal-server` start. The server runs fine non-elevated (Kestrel on 8001, DPAPI secrets); only a console the user started with "Run as administrator" is out of reach, and the skill reports that as exit code 3. Any public BL/BP class in a logic DLL is callable by name via reflection; no registration is needed.
 - To find which copy of a DLL is live, use a non-destructive lock test: `[IO.File]::Open(path,'Open','ReadWrite','None')` in try/catch. Never `: > file`; it truncates the file to 0 bytes.
 - "System Error: Contact admin" on a client is `server.errorfilter.ErrorFilter` masking the real exception. Set the ERRORFILTER module's `ShowErrors` StartUpParameter to true in `BUILD\RUNTIME\applications\server.config.xml` to see it.
-- BP/BL exceptions on the mobile path are not written to `master.EVENTLOG` or `APPLICATIONLOG`. Without `ShowErrors` the stack trace only appears in the elevated server.console window. Client-side errors (DataFilter checks, swallowed exceptions) only show in logcat under tag `DOTNET`; add a temporary `Console.WriteLine` in a silent catch to surface one.
+- BP/BL exceptions on the mobile path are not written to `master.EVENTLOG` or `APPLICATIONLOG`. Without `ShowErrors` the stack trace only appears in the server.console window. Client-side errors (DataFilter checks, swallowed exceptions) only show in logcat under tag `DOTNET`; add a temporary `Console.WriteLine` in a silent catch to surface one.
 
 ## Base runtime replay (pipeline-shared)
 
