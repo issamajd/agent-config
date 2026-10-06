@@ -5,6 +5,7 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 ## Skills
 
 - The `mobile-screen-generator` skill generates.
+- The `rndscripts-deliverable` skill turns a working SQL change into RNDSCRIPTS deliverable files (source dialect, schema/component split, converter check, TFVC checkout). Use it for any DB change that has to ship.
 
 ## Commits
 
