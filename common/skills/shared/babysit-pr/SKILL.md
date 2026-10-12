@@ -28,6 +28,9 @@ asked for it; otherwise report that the PR is ready.
 4. Triage findings. Open the source before deciding. Fix real ones with a
    focused commit. For ones not worth addressing, reply and resolve the thread.
    Leave design or product disagreements open and collect them for the report.
+   A finding on code the PR didn't change is not this PR's to fix: reply that
+   it predates the PR and leave it open, unless the PR's change makes it newly
+   reachable.
 5. If anything was pushed, request a `review-panel` round on the delta when the
    skill is available, then go back to step 1.
 6. Stop after 3 rounds even if threads remain. The PR has a problem the loop
