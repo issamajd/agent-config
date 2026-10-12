@@ -38,6 +38,8 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 - To find which copy of a DLL is live, use a non-destructive lock test: `[IO.File]::Open(path,'Open','ReadWrite','None')` in try/catch. Never `: > file`; it truncates the file to 0 bytes.
 - "System Error: Contact admin" on a client is `server.errorfilter.ErrorFilter` masking the real exception. Set the ERRORFILTER module's `ShowErrors` StartUpParameter to true in `BUILD\RUNTIME\applications\server.config.xml` to see it.
 - BP/BL exceptions on the mobile path are not written to `master.EVENTLOG` or `APPLICATIONLOG`. Without `ShowErrors` the stack trace only appears in the server.console window. Client-side errors (DataFilter checks, swallowed exceptions) only show in logcat under tag `DOTNET`; add a temporary `Console.WriteLine` in a silent catch to surface one.
+- Even with `ShowErrors` the client gets the message without a stack, and the console window's text can't be read through UI Automation (`ServerLogsFromTrace.log` from server.console.dll.config is never written). To get the stack, temporarily make the BL entry method rethrow `new MethodException(ex.ToString())`, then remove it. Put `ShowErrors` back to false afterwards.
+- The shared dev databases have one SQL login per schema, passwords in `BUILD\RUNTIME\secrets.json` (`DB_master`, `DB_whs1`, `DB_branch1`, ...). The `master` login cannot read `whs1` tables (SELECT permission denied); query warehouse tables as `whs1`. sqlcmd: `C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe -S 192.168.50.156\DEVSQL2019 -U <login> -C -d <db>` with the password in `SQLCMDPASSWORD`.
 
 ## Base runtime replay (pipeline-shared)
 
@@ -62,7 +64,13 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 - Deploy a MAUI app with `dotnet build <app>.csproj -f net8.0-android -c Debug -t:Run`. A plain build plus `adb install` aborts at startup ("No assemblies found ... Fast Deployment") because Debug APKs leave the assemblies out; for a sideloadable APK add `-p:EmbedAssembliesIntoApk=true`.
 - A startup crash loop with a `System.SR` StackOverflow and no app frames means a corrupt fast-deploy base. Fix it with `-t:Run -p:EmbedAssembliesIntoApk=true -p:AndroidFastDeploymentType=`. Don't follow a bare `dotnet build` with an incremental `-t:Run` onto the device.
 - Never `adb uninstall`: it wipes the app's connection settings. The server endpoint lives per device in `shared_prefs` and goes stale when the host IP changes. Use `adb reverse tcp:<port> tcp:<port>` and point the app at `127.0.0.1` (force-stop the app before editing `shared_prefs`).
-- If a build hangs with low CPU, adb may be holding stdout: run `adb kill-server` and retry.
+- A Debug Android build that sits idle (no CPU, no child processes, last log line "Found Xamarin.Android ...") is stuck in `GetPrimaryCpuAbi`, waiting on the adb server for the device's ABI. Test adb with a call that reaches the device, under a timeout: `adb -s 127.0.0.1:21503 shell getprop ro.product.cpu.abi`. `adb devices` still lists the emulator as `device` while `shell` hangs, so it proves nothing.
+- The cure for a hung adb (a stuck build, or a plain `devices`/`shell` call that hangs): kill the build, `adb kill-server`, `adb start-server`, `adb connect 127.0.0.1:21503` (MEmu doesn't come back on its own), check `shell getprop` answers, then rebuild.
+- `adb kill-server` drops every `adb reverse`; the app then fails with "Server Response Error: Connection failure". Run `adb reverse tcp:8001 tcp:8001` again and check `adb reverse --list`.
+- `-t:Run` relaunches the app a few seconds after the build reports done, so input sent right away lands in the old process. After a deploy, force-stop and relaunch the app yourself (`am force-stop`, then `monkey -p <package> -c android.intent.category.LAUNCHER 1`) before driving it.
+- ITMS app (`com.span.client.mobile.itms.maui`) login, when driving it with `adb shell input`: an "Update Available" screen can come first ("Maybe Later"); the username field keeps the last value (clear it with its x); the keyboard covers Sign In, so send `keyevent 111` (Escape) before tapping it.
+- A server.console restart, or the same user logging in from another client (the `tests\test.bpclient` fixture logs in as admin), ends the device session. The app shows nothing until the next page load, which then fails with "Object reference not set to an instance of an object". Don't run BP tests while driving or recording the emulator; restart the app and log in again after a server restart.
+- Find tap targets with `uiautomator dump` (`adb shell uiautomator dump /sdcard/ui.xml`, then read the node bounds); each dump takes about 3 seconds. Screenshots: `adb exec-out screencap -p > file.png`.
 
 ## Azure DevOps Server
 
@@ -70,8 +78,9 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
   `ssh://devops:22/<Collection>/<Project>/_git/<repo>` (rndfwcore: collection `RNDFWCORE`,
   project `RNDFWCORE`, repo `rndfwcore`); the ssh host and port say nothing about the web port.
 - The REST API accepts Windows auth from agent shells: `curl --negotiate -u : <url>`. No PAT is
-  needed. Use `api-version=7.0`. The only writes allowed are pull request thread comments; never
-  upload files or attachments, edit work items, or change PR state through it.
+  needed. Use `api-version=7.0`. Allowed writes: creating a pull request (with its title and
+  description) and pull request thread comments. Never merge or complete a PR without Majd's
+  explicit consent, and never upload files or attachments or edit work items through it.
 - There is no `az` CLI on this machine; use curl. There is no `gh` either: wherever a skill says
   `gh pr ...`, use the PR commands below.
 
@@ -83,6 +92,12 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
   `git fetch origin refs/pull/<id>/merge:refs/remotes/origin/pr/<id>` then
   `git diff origin/<target>...origin/pr/<id>`. Source and target branches are in the PR JSON
   (`sourceRefName`, `targetRefName`).
+- Create: `POST http://devops:8050/<Collection>/<Project>/_apis/git/repositories/<repo>/pullrequests?api-version=7.0`
+  with `{"sourceRefName":"refs/heads/<branch>","targetRefName":"refs/heads/<target>","title":"...",
+  "description":"...","isDraft":false}` (Content-Type `application/json; charset=utf-8`). The
+  description is capped at 4000 characters. Check first that no PR exists for the branch:
+  `GET .../pullrequests?searchCriteria.sourceRefName=refs/heads/<branch>`. The web page is
+  `http://devops:8050/<Collection>/<Project>/_git/<repo>/pullrequest/<id>`.
 - Comment: `POST <base>/threads?api-version=7.0` with body
   `{"comments":[{"parentCommentId":0,"content":"<markdown>","commentType":1}],"status":1}`.
   Every comment states which model wrote it (the babysit-pr reply header or the review-panel
