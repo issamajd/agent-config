@@ -4,7 +4,7 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
 
 ## Skills
 
-- The `mobile-screen-generator` skill generates.
+- The `mobile-screen-generator` skill generates a .NET MAUI page on the SPAN mobile framework (metadata SQL, ViewModel, controller, page, DI, route) from a screen spec, following the target project's conventions. Its `memu.sh` drives and records the app on MEmu.
 - The `rndscripts-deliverable` skill turns a working SQL change into RNDSCRIPTS deliverable files (source dialect, schema/component split, converter check, TFVC checkout). Use it for any DB change that has to ship.
 - The `xal-server` skill starts, stops, restarts and checks a repo's server.console from an agent shell (`XalServer.ps1`, Windows PowerShell 5.1). Use it instead of asking the user to click Start.
 

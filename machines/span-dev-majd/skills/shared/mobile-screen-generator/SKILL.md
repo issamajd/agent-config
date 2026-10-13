@@ -1,160 +1,74 @@
 ---
 name: mobile-screen-generator
-description: Generate .NET MAUI mobile screens from specifications using metadata-driven architecture patterns
-argument-hint: [spec-file-path]
+description: Generates a .NET MAUI mobile screen (metadata SQL, ViewModel, controller, page, constants, DI, route, menu) on the SPAN mobile framework from a screen spec, following the target project's own conventions. Use when the user asks to generate or build a mobile page from a spec, or runs it by name. Not for writing the spec itself (in rnditmscore, itms-mobile-spec does that for ITMS legacy flows).
+argument-hint: <spec file path>
 ---
 
-# Mobile Screen Generator
+# Mobile screen generator
 
-You are a specialized agent that generates complete .NET MAUI mobile screen implementations from specification documents. You produce SQL metadata scripts, C# code files (ViewModel, Controller, Page), and dependency injection/navigation configuration updates.
+Turns one screen spec ([TEMPLATE_Screen_Specification.md](TEMPLATE_Screen_Specification.md)) into a working page. Framework facts and templates are in [REFERENCE.md](REFERENCE.md); read it before generating.
 
-## Quick Start
+## Rules
 
-1. If the user provides a spec file path, read it first
-2. If no spec provided, offer the template for them to fill out
-3. Validate the specification is complete before generating
-4. Generate all required files following the patterns exactly
-
-## Required Context
-
-Before generating, you MUST read these reference files from this skill folder:
-
-1. **[Agent Instructions](AGENT_Mobile_Screen_Generator.md)** - Complete generation rules and patterns
-2. **[Screen Creation Guide](MOBILE_SCREEN_CREATION_GUIDE.md)** - Complete reference guide with all code patterns and templates
-3. **[Specification Template](TEMPLATE_Screen_Specification.md)** - Template structure for specifications
+- **Build what the spec says, nothing more.** No extra fields, buttons, validations or behaviour.
+- **Ask instead of guessing.** A missing field type, filter name, value list source, prompt text or navigation target is a question to the user, listed all at once before generating anything.
+- **The project's code is the convention.** When REFERENCE.md and the project's existing pages differ (namespaces, constants, DI style, SQL style), follow the project.
+- **Don't touch other screens.** Only add to shared files (constants, DILoader, AppController); never change existing entries.
+- **No pattern, no invention.** If the spec needs something neither REFERENCE.md nor an existing page shows, say so and ask how to build it.
 
 ## Workflow
 
-### Step 1: Get Specification
+### 0. Learn the project
 
-If user provides `$ARGUMENTS` (a file path):
-- Read the specification file at that path
-- Validate it has all required sections
+Find the MAUI app project (the csproj with `<UseMaui>`) and read:
 
-If no arguments:
-- Show the user the template structure
-- Ask them to fill it out or provide a spec file path
+1. The csproj: `RootNamespace`, and whether it lists `.cs` files explicitly (`EnableDefaultCompileItems=false` means every new file needs a `<Compile Include>`).
+2. `constants/`: which files exist (`ScreenNames`, `PageNames`, `ControllerNames`, `MethodNames`, `BPNames`, `ModelFields*.cs`).
+3. `engines/DILoader.cs` and `AppController.cs`: how pages and controllers are registered and routed.
+4. The models folder layout (flat or per feature).
+5. Two or three existing pages closest to the spec (same display type, tabs, grid, row navigation): their page, controller, ViewModel and `screens-defs-*.sql`. These are the style to copy.
+6. How the existing pages tell the user an action worked (rnditmscore: `await this.DisplaySnackbar("... successfully")` after every successful confirm). If the spec says to show nothing where the existing pages show this, ask before following the spec.
+7. How the existing menu rows are inserted, if the spec has a menu entry.
+8. The screen profile codes already used, so the new one is unique.
 
-### Step 2: Validate Specification
+Write down the conventions you found in a short list; it goes in the final report.
 
-Before generating, verify:
-- Screen name and basic information filled
-- All fields with complete properties (name, type, control, width, visible, readonly, mandatory)
-- Value lists defined for all Combobox fields
-- Button actions with clear descriptions
-- Navigation parameters (input/output) documented
+### 1. Check the spec
 
-**If anything is missing**: STOP and ASK the user to clarify. DO NOT GUESS.
+Every ⭐ section filled; every field has a type, control and group; every combobox has a value list; every server call (section 9a, wherever it is triggered) lists its arguments and its filters by name, type and value; every prompt has its text; every navigation has a target and what it passes. Ask for whatever is missing, then stop until answered.
 
-### Step 3: Generate Files
+If the project has a rule that server calls are tested before the screen (rnditmscore: `tests/test.bpclient`, see its AGENTS.md), check each call in 9a has a test, and say which don't.
 
-Generate in this exact order:
+### 2. Generate
 
-1. **SQL Metadata Script** - `pages/{feature}/screens-defs-{ScreenName}.sql`
-2. **Constants** - Additions to ScreenNames.cs, BPNames.cs, MethodNames.cs
-3. **ModelFields** - Additions to ModelFields.{FeatureName}.cs (centralized field constants)
-4. **ViewModel** - `models/{feature}/{ScreenName}ViewModel.cs`
-5. **Controller** - `pages/{feature}/{ScreenName}PageController.cs`
-6. **Page** - `pages/{feature}/{ScreenName}Page.cs`
-7. **DILoader additions** - Entries to add to engines/DILoader.cs
-8. **AppController additions** - Route registration for AppController.cs
+In this order, writing the files directly:
 
-### Step 4: Deliver Output
+1. `pages/{Feature}/screens-defs-{Name}Page.sql`: display definition, fields, value lists, appearance rules and overrides, validations, menu row.
+2. Constants.
+3. ViewModel.
+4. Controller.
+5. Page.
+6. DILoader and AppController entries.
+7. `<Compile Include>` entries if the csproj needs them.
 
-For each file provide:
-- Full path relative to project root
-- Action: "CREATE NEW" or "ADD TO EXISTING"
-- Complete content
-- Any special instructions
+### 3. Build
 
-## Strictness Rules
+Build the app project for Android (`dotnet build <app>.csproj -f net8.0-android`, or the target framework the csproj uses). Check the project's AGENTS.md for build prerequisites first (rnditmscore needs rndfwcore's Android assemblies built with `BuildMobile.bat`). Fix errors in the generated code until it builds with no new warnings. If the build fails on framework references rather than generated code, report it; don't work around it. Don't run the SQL against a database unless the user asks.
 
-- **NEVER** add features not in specification
-- **NEVER** deviate from established patterns in the agent guide
-- **NEVER** make assumptions about missing data - ASK instead
-- **NEVER** create custom implementations beyond standard patterns
-- **ALWAYS** follow exact naming conventions
-- **ALWAYS** use exact template structures from the guide
-- **ALWAYS** validate before delivering
+Then check what the build can't:
 
-## Key Patterns Quick Reference
+- `DATADISPLAYNAME` in the SQL equals `nameof(Page)`.
+- Every route level is registered, and both the page and the controller are in DI.
+- Each `ValidateThenRunAsync` action name equals an `ACTIONNAME` in the SQL.
+- `DataDisplayDataDefParentContainer`, every named group container and `EntityDefParentContainer` exist in `BuildPageLayout` with exactly those names.
+- Every filter in a server call matches section 9a by name and type, including its "Sent when" condition.
+- If the SQL has control type overrides and the user had it applied: `BPDataPanelControlAppearanceCRUD.Refresh` returns them for the page (an empty result means the database lacks the `DefaultAppearance` row; REFERENCE.md, DATAPANELAPPEARANCEDEFINITION).
 
-### Naming Conventions
-- **Screen Name**: `{Feature}{Purpose}Page` (e.g., ProductSearchPage)
-- **Controller**: `{ScreenName}PageController`
-- **ViewModel**: `{ScreenName}ViewModel`
-- **Field Constants**: Centralized in `ModelFields.{FeatureName}.cs`
+When the user asks for a device check, drive MEmu with [memu.sh](memu.sh) (login, waits, screenshots, recordings); REFERENCE.md's last table lists what went wrong on the device before.
 
-### File Locations
-- SQL: `pages/{feature}/screens-defs-{ScreenName}.sql`
-- ViewModel: `models/{feature}/{ScreenName}ViewModel.cs`
-- Controller: `pages/{feature}/{ScreenName}PageController.cs`
-- Page: `pages/{feature}/{ScreenName}Page.cs`
-- Field Constants: `constants/ModelFields.{FeatureName}.cs`
+### 4. Report
 
-### Display Types (DATADISPLAYDEFINITION.DATADISPLAYTYPE)
-Every screen must have a `DATADISPLAYDEFINITION` row. The `DATADISPLAYTYPE` determines what gets built:
-- **`Panel`** — Dynamic form only (fields in `m_DataDefinitions`)
-- **`CardsGrid`** — Card-based collection view only (fields in `m_CardsGridDataDefinitions`, rendered via `DataCardTemplateBuilder` → `UICollectionView`)
-- **`PanelAndCardsGrid`** — Both a dynamic form and a card list on the same page
-
-### Field Splitting (GRIDINCLUDE / PANELINCLUDE)
-When a screen uses `PanelAndCardsGrid` (or when you want to control which surface a field appears on):
-- `PANELINCLUDE = 1` → field goes to panel form
-- `GRIDINCLUDE = 1` → field goes to cards grid
-- Both `1` → field appears in both surfaces
-- Both NULL → field included in whichever surface the screen type requires
-- Card-specific overrides: `GRIDCAPTION`, `GRIDISVISIBLE`, `GRIDSEQUENCE`, `GRIDGROUPNAME` (GRIDWIDTH is not read by mobile)
-
-### CardsGrid Page Overrides
-Pages with `CardsGrid` or `PanelAndCardsGrid` must provide in code (not DB):
-- **`CardsGridParentContainer`** — name of an `I_UIParentControl` in `BuildPageLayout` that hosts the `UICollectionView`
-- **`GetCardsGridItemsSourceBinding()`** — binding path to the rows collection on the ViewModel
-- **`GetCardsGridTapAction()`** — optional row tap handler
-- **`GetCardsGridEmptyViewText()`** — localized empty-state string
-- **`CreateCardsGridConfiguration()`** — optional spacing, accent, tap wiring overrides
-
-Card layout (columns, sequence, control types) comes from DB + appearance overrides; items source and navigation stay in code.
-
-### Base Classes
-- **GridViewModel**: Screens with data grids
-- **DynamicViewModel**: Form-only screens with navigation
-- **BaseViewModel**: Simple screens
-
-### Control Types (Auto-determined from DataType)
-- String + ValueList → Combobox
-- String → Entry
-- Double → NumericEntry
-- DateTime → DatePicker
-- Boolean → Switch
-
-### Override Control Types (via CONTROLTYPE in DATAPANELAPPEARANCEDEFINITION)
-These override the auto-determined type. Set in the `CONTROLTYPE` column:
-- **ChipGroup** — Editable multi-select chip group (requires ValueList on the field)
-- **Chip** — Display-only chip/badge (e.g., status indicator)
-- **CaptionValue** — Framed box with caption label above a bound value label
-- **InlineCaptionLabel** — Horizontal caption + value side-by-side
-- **Separator** — Thin horizontal line
-
-### Control Parameters (CONTROLPARAMS in DATAPANELAPPEARANCEDEFINITION)
-Semicolon-separated key='value' pairs to customize controls:
-- `EntryStyleName='StyleName'` — Override the value label style
-- `ConverterProfile='ProfileName'` — Chip converter profile for dynamic text/background/text-color
-
-### ⚠️ Chip + ReadOnly
-When CONTROLTYPE is `Chip`, READONLY **must be 0**. ReadOnly=1 causes DevExpress to force default styling, overriding converter color bindings. The chip is already non-interactive via `InputTransparent = true`.
-
-## Usage Examples
-
-```
-/mobile-screen-generator docs/SPEC_MyNewScreen.md
-```
-
-Or without arguments to get the template:
-```
-/mobile-screen-generator
-```
-
-## For Complete Details
-
-Read the full agent instructions in [AGENT_Mobile_Screen_Generator.md](AGENT_Mobile_Screen_Generator.md).
+- Files created and changed.
+- The conventions followed (from step 0).
+- Anything in the spec that had no pattern, and how it was handled after asking.
+- What the user does next: apply the SQL, deploy, test on the device.
