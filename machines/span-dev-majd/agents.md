@@ -81,8 +81,9 @@ Windows 11 work PC at SPAN. Notes that apply only to this machine go here.
   needed. Use `api-version=7.0`. Allowed writes: creating a pull request (with its title and
   description) and pull request thread comments. Never merge or complete a PR without Majd's
   explicit consent, and never upload files or attachments or edit work items through it.
-- There is no `az` CLI on this machine; use curl. There is no `gh` either: wherever a skill says
-  `gh pr ...`, use the PR commands below.
+- There is no `az` CLI on this machine; use curl. `gh` is installed (`C:\Program Files\GitHub CLI\gh.exe`,
+  logged in as `issamajd`) but only works for GitHub repos: for Azure DevOps repos, wherever a skill
+  says `gh pr ...`, use the PR commands below.
 
 ## Azure DevOps pull requests
 
