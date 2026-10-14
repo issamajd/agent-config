@@ -66,8 +66,44 @@ The Claude in Chrome extension records the tab it is driving and exports a GIF w
 markers, through a browser download the user must approve. Use it when the recording is of
 Claude's own actions in a tab; it is a GIF, so it is already embeddable and needs no preview.
 For a human's session in a browser, record the browser window with the recipe for the OS.
+If the extension is not connected, use the Playwright recipe below instead of asking.
+
+## Browser flow (Playwright, any OS)
+
+Use this for a web app flow when the Chrome extension is not connected, or when the clip
+should double as a check. It drives a real headless Chromium, records only the page, works
+the same on macOS and Windows, and needs neither ffmpeg nor the extension. Install it in a
+scratch directory, never in the project:
+
+```bash
+npm init -y && npm i playwright@1.64.1 && npx playwright install chromium
+```
+
+```js
+import { chromium, expect } from 'playwright/test';
+const browser = await chromium.launch();
+const viewport = { width: 1280, height: 800 };
+const context = await browser.newContext({ viewport, recordVideo: { dir: 'videos', size: viewport } });
+const page = await context.newPage();
+// Drive the flow and assert each step with expect(); pause ~1s between steps so it reads.
+await context.close(); // the video is written on close
+await page.video().saveAs('videos/<name>.webm');
+await browser.close();
+```
+
+- Assert as you go (`await expect(...).toBeVisible()`), so a clip that finishes is also a
+  passing run. Fail on `pageerror`, and on any `dialog` (handle it, or the page blocks).
+- After a sign-in redirect, wait for a heading or other content rather than `waitForURL`:
+  an app that routes client-side after the callback never fires the load it waits for.
+- To show states the local data cannot reach, stub the API with `page.route(...)` and put
+  "stubbed" in the file name and the PR text so no one mistakes it for live data.
+- Seeded test credentials only, and only against a local dev host.
+- Video frames do not show you the design. Take a few `page.screenshot()`s of key states
+  (both colour schemes, a phone width) and look at them before handing the clip over.
+- Output is `.webm`, which GitHub plays inline; no conversion needed.
 
 ## Prerequisites
 
-`ffmpeg -version` must work for the window and macOS recipes. If it is missing, tell the user
+`ffmpeg -version` must work for the window and macOS recipes; the Playwright recipe does not
+need it. If it is missing, tell the user
 (`winget install Gyan.FFmpeg`, `brew install ffmpeg`) and stop; do not improvise a recorder.
