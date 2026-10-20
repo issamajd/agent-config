@@ -15,6 +15,7 @@ Here are my preferences so we can be more aligned as we work together.
 - Tests are good! Endless smoke tests, "regression tests" for feature deletions, etc, much less good. Tests should be focused, not slop.
 - Comments are a great way to clarify functionality and how code is used. Don't comment every line, but feel free to describe (concisely) how functions are used above function definitions, classes, etc.
 - Keep comments up to date! When making changes, it's important to keep things in sync.
+- No ticket or PR references in code comments (no "S4ASSETS-2301", no "see PR 21"). Comments say what the code does and why; the issue key belongs in the commit message and PR description.
 
 ## Questions are read-only
 
