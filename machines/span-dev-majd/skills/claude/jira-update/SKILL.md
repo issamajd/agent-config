@@ -28,7 +28,7 @@ If a field id stops working (Jira admin change), re-read them with
 
 ## Procedure
 
-1. **Read the item.** `getJiraIssue` with `fields: ["summary","description","status","comment","customfield_10015","customfield_10037","customfield_10391","customfield_10106","customfield_10591"]`
+1. **Read the item.** `getJiraIssue` with `fields: ["summary","description","status","comment","customfield_10015","customfield_10037","customfield_10391","customfield_10106","customfield_10591","timetracking"]`
    and `responseContentFormat: "markdown"`. Note every point the tester raised: the description's
    "Tester Comments" section on rework items, the Tester Comments field, and the latest comments.
 2. **Collect the facts from this session.** Root cause, the change (repo + file, or DB script),
@@ -52,8 +52,9 @@ If a field id stops working (Jira admin change), re-read them with
    ```
    Plain English, no blame, no stack traces. File names are fine; no passwords, tokens, secrets,
    client ids or internal server addresses.
-5. **Show the draft first** (fields + comment) unless Majd said to post directly. Jira is shared with
-   the customer's testers, so posting is outward-facing.
+5. **Show the draft first** (fields + comment) unless Majd said to post directly ("update the tasks",
+   "update the jira" count as posting directly). Jira is shared with the customer's testers, so posting
+   is outward-facing.
 6. **Post.** `editJiraIssue` with `contentFormat: "markdown"` and
    `fields: { customfield_10015, customfield_10037 (or omit), customfield_10391, customfield_10106 }`, then
    `addCommentToJiraIssue` with `contentFormat: "markdown"`.
@@ -61,6 +62,17 @@ If a field id stops working (Jira admin change), re-read them with
    items, one `searchJiraIssuesUsingJql` with `key in (...)` and the four field ids is enough.
 8. **Fix a posted comment in place** with `addCommentToJiraIssue` + `commentId` (same body format)
    rather than adding a correction comment.
+
+## Time tracking (only when asked)
+
+- "Set the time tracking to 30 mins" means log work: `addWorklogToJiraIssue` with `timeSpent: "30m"`
+  (also `2h`, `1d`). Omit `started` to book it now, or pass an ISO date-time for an earlier day. Read
+  `timetracking` and `worklog` first so an existing worklog is updated (`worklogId`), not duplicated.
+- Items arrive with an Original Estimate (usually `1d`). A worklog auto-reduces Remaining by the logged
+  time (1d becomes 7h 30m), and the tool has no option to change that. To close the estimate on
+  finished work, `editJiraIssue` with `fields: { timetracking: { remainingEstimate: "0m" } }`, only if
+  Majd asks. Never touch the Original Estimate.
+- Verify with `timetracking` in the same read-back as the other fields.
 
 ## Notes
 
@@ -75,6 +87,8 @@ If a field id stops working (Jira admin change), re-read them with
 - Do not edit the description or the Tester Comments field.
 - Do not set an End date while Progress is below `1`, or a Start date later than an existing one.
 - Do not paste whole diffs; one short snippet at most, only if it explains the fix better than words.
+- PR numbers go in Technical Comments only; the tester-facing comment says what changed, not where.
+  Do not mention recordings or attachments that are not on the item (Majd keeps recordings private).
 - Never ask for credentials, client secrets or tokens to be posted in Jira; ask for them "through a
   secure channel (not in Jira)".
 - Do not claim "verified by the tester": that is the tester's call after retest.
