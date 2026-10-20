@@ -16,6 +16,7 @@ How to apply:
 - These are defaults, not limits. You have standing permission to override them: if a cheaper model's output doesn't meet the bar, rerun or redo the work with a smarter model without asking. Judge the output, not the price tag. Escalating costs less than shipping mediocre work.
 - Don't let cost prevent you from using the right model for the job. Instead, take advantage of cheaper options to get more information and try things before moving the work to a more expensive option.
 - Bulk/mechanical work (clear-spec implementation, data analysis, migrations): gpt-6-astra — it's effectively free.
+- gpt-6-astra is limited to three jobs: review, mechanical implementation, and computer use when needed. Anything beyond that needs my consent first. It never writes docs (docs repos, READMEs, specs, PR descriptions). It doesn't design or own tricky logic. Treat its code as a draft: read every diff line by line and simplify it before committing.
 - Anything user-facing (UI, copy, API design) needs taste ≥ 7.
 - Reviews of plans/implementations: fable-5.1 or opus-5.5, optionally gpt-6-astra as an extra independent perspective.
 - Never use Haiku.
