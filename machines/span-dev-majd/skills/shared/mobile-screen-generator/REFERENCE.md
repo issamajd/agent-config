@@ -56,7 +56,7 @@ Without it, no cards grid is ever built.
 | `SEQUENCE` | order (groups are ordered by their lowest sequence) |
 | `DATATYPE` | `String`, `Integer`, `Double`, `Decimal`, `DateTime`, `Boolean`, `Unknown` |
 | `WIDTH` | columns out of 8: `4` half, `8` full |
-| `ISVISIBLE` / `ISREADONLY` / `ISMANDATORY` | `1`/`0` |
+| `ISVISIBLE` / `ISREADONLY` / `ISMANDATORY` | `1`/`0`. `ISREADONLY` on a text, numeric, combo or date field sets the editor's `IsReadOnly`: grey fill, no typing, but its end icon (a lookup) still works. Check boxes, switches and chip groups are disabled instead. |
 | `FILTERTYPE` | `Value`, or `List` for a combobox |
 | `FILTERCOMPARISONTYPE` | `Equal`, `Like`, `GreaterOrEqual`, `LessOrEqual`, `Range`, ... |
 | `FILTERDEFAULTVALUES` | default value or NULL |
@@ -95,7 +95,7 @@ Reuse an existing list when one already serves the same data.
 | `CONTROLTYPE` | override: `ChipGroup` (editable multi-select, needs a value list), `Chip` (display-only badge), `CaptionValue`, `InlineCaptionLabel`, `Separator`, `CheckBox`, `Password` |
 | `CONTROLPARAMS` | `key='value'` pairs separated by `;`: `EntryStyleName='...'`, `ConverterProfile='...'` (a `ChipConverterRegistry` profile registered in DILoader) |
 
-A `Chip` must have `READONLY` 0 here and `ISREADONLY` 0 on the field, or DevExpress overrides its colours.
+A `Chip` must have `READONLY` 0 here and `ISREADONLY` 0 on the field: read-only disables a chip group, which greys out its colours.
 
 Overrides worth knowing:
 
@@ -335,9 +335,9 @@ TabView.Items.Add(new UITabitem
 
 Tabs that legacy showed only when needed (Change Info, Supervisor) **stay in the TabView**; the page switches to them and decides from its own state whether their fields are sent. What doesn't work, all found on MoveTaskConfirmPage (Android):
 
-- `UITabitem.IsVisible` throws `NotImplementedException`, and DevExpress `TabViewItem` has no visibility of its own.
+- `UITabitem.IsVisible` (the `I_UIControl` member) throws `NotImplementedException`, and `TabView` sets every item's `VisualElement.IsVisible` itself (only the selected tab is visible), so a tab can't be hidden.
 - Removing a tab from `TabView.Items` and adding it back drops its content's inherited `BindingContext`: its fields neither show nor write the bound values (re-assigning `Content.BindingContext` fixes that part only).
-- Setting `SelectedItemIndex` across several tabs in one go (General to the fifth tab) leaves a skipped tab's page laid over the left half of the target tab, swallowing taps there, with or without `ScrollAnimationEnabled`.
+- Setting `SelectedItemIndex` across several tabs in one go (General to the fifth tab) left a skipped tab's page laid over the left half of the target tab, swallowing taps there. That was the DevExpress `TabView`; the in-house one collapses unselected tabs, so recheck on the device before working around it.
 
 So change tabs in code one index at a time, and don't record the "previous tab" for a Back button while stepping (`TaskMoveConfirmPage.SelectTab`).
 
@@ -384,6 +384,7 @@ For `CardsGrid` / `PanelAndCardsGrid`: card fields come from rows with `GRIDINCL
 ### Lookups and back
 
 - Lookup modal: `await OpenLookupAsync<LookupModalPage, LookupModalPageController>(config)`; returns null on cancel, so null-guard. Custom modals: wrap in `RunLookupGuardedAsync(...)`.
+- Lookup trigger: the field's own end icon, not a separate button: `if (GetControl(FIELD) is EditBase editor) { editor.EndIcon = ResourceHelper.GetImageSourcePNG("LookupIcon32"); editor.EndIconCommand = new Command(async () => await OpenXLookupAsync()); }`. A field filled only from the lookup is `ISREADONLY` 1; its end icon keeps working.
 - Root screen: `HideShellBackButton()`. Back that must run logic (release a task, confirm exit): `SetBackAction(asyncAction)`, which covers both the toolbar arrow and the hardware button.
 - A Cancel button on a root screen that navigates to `//Main/Menu` leaves the operation open: the next menu tap asks "New Operation Confirmation: Close Current Operation And Open New Operation?". Expect it when driving the device.
 
@@ -395,7 +396,7 @@ A numeric field can't show "empty": it shows and writes 0. If empty means someth
 
 In `AfterOnAppearing()`: `if (GetControl(Feature.FIELD) is UISwitch s) { s.Toggled -= OnX; s.Toggled += OnX; }`. Prefer an appearance rule (SQL) over code when the behaviour is a pure show/hide/enable on a field value.
 
-**Scans** (keyboard-wedge scanner: text plus Enter in a field): no existing page handles Enter yet. Entry fields are `UIEntry`, a DevExpress `TextEdit`. Before generating a scan handler, check which event `TextEdit` raises on Enter, and tell the user the pattern is new so it gets tested on a device.
+**Scans** (keyboard-wedge scanner: text plus Enter in a field): no existing page handles Enter yet. Entry fields are `UIEntry`, the in-house `TextEdit`, which raises `Completed` on Enter. Tell the user the pattern is new so it gets tested on a device.
 
 ## When something doesn't show
 
