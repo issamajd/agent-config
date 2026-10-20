@@ -35,7 +35,7 @@ own copy or a `.codex\config.toml`:
 |---|---|---|---|
 | S4Assets | `com.span.client.mobile.s4assets.maui` | `D:\GitProjects\rnds4assets\client\client.mobile.s4assets` | `client.mobile.s4assets.maui.csproj` |
 | ITMS | `com.span.client.mobile.itms.maui` | `D:\GitProjects\rnditmscore\client\client.mobile.itms` | `client.mobile.itms.maui.csproj` |
-| Controls gallery (dxfree) | `com.span.controls.gallery` | `D:\GitProjects\rndfwcore-dxfree\client\controls.gallery` | `controls.gallery.csproj` |
+| Controls gallery | `com.span.controls.gallery` | `D:\GitProjects\rndfwcore-dxfree\client\controls.gallery` | `controls.gallery.csproj` |
 
 For another app, read `ApplicationId` from its csproj.
 
