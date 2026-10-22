@@ -281,6 +281,14 @@ The route is the screen's path from its menu root. Every page in the path needs 
 
 Inset every block that sits on the page background (banner, `UIFormCard`, stat strips, tab views, grids, a lone button, the action bar) by `ThemeConstants.Spacing.PageGutter` (12dp) at both sides, so their edges line up; `UIFormCard` already does. A block inside a card or tab gets no side margin: its container insets it. `DataGridConfiguration.Margin` is one number for all sides, so set it to 0 and give the grid a `Thickness` afterwards. A `UIStackLayout` that only stacks blocks needs `Padding = 0`, because the theme pads every stack by 3dp.
 
+### Instructions banner
+
+In apps whose base page has `Instructions` (S4Assets `ExtendedBaseContentPage`), a page sets its banner hint by overriding it, never by writing `InstructionsLabel.Text`: `protected override string Instructions => "...";` in English (the base translates it). The banner shows it when built and on every appearance. When the hint depends on state (a ticket loaded, a location resolved, the selected tab), return it from that state and call `RefreshInstructions()` when the state changes.
+
+### Load errors
+
+Let `InitializeAsync` throw. The base page goes back to the previous page and shows the error, so don't catch a load failure to show it later from the page.
+
 ### Editors are rebuilt on every appearance
 
 `BaseContentPage.OnAppearing` removes the metadata editors and builds new ones, but the old editors stay alive. Don't bind an editor property to a view model that outlives the page; a replaced editor still bound to it lays out its disposed native view when the value changes, and the app crashes. Set the property on the current editor (`GetControl(...)`) when the value changes instead. A `TextChanged` handler also fires when a removed editor blanks its text, so ignore senders whose `BindingContext` is null.
