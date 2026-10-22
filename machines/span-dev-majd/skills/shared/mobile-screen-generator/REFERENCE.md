@@ -302,7 +302,9 @@ private XalIndexedObjectCollection<Filter> Build{Action}Filters()
 }
 ```
 
-`FiltersHelper` (rndfwcore `shared.helpers`) has `GetString`, `ExistsWithText`, `IsEmptyOrNull`, `ExtractFilters(DataRow | filters, columns)`, `MergeFilters`, `ExcludeFilters`, `RemoveNullOrEmptyFilters`, `AddValueConstraintIfSet`, `AddDateRangeConstraintIfSet`, `ClearValue`. A filter's runtime value type must match its declared `DataType` (the framework throws otherwise).
+`FiltersHelper` (rndfwcore `shared.helpers`) has `GetString`, `ExistsWithText`, `IsEmptyOrNull`, `ExtractFilters(DataRow | filters, columns)`, `MergeFilters`, `ExcludeFilters`, `RemoveNullOrEmptyFilters`, `AddValueConstraintIfSet`, `AddDateRangeConstraintIfSet`, `ClearValue`, `SetValue`. A filter's runtime value type must match its declared `DataType` (the framework throws otherwise).
+
+**Setting a page field from code** (a lookup result, a server row, a computed text): use `FiltersHelper.SetValue(this.{Name}Model.DynamicFilters, {Feature}.{FIELD}, DataType.String, value)`. It sets the value on the existing filter and adds one only when the page hasn't built that field. `AddOrReplace` / `AddOrReplaceFilter` swap in a new `Filter`, so the control bound to the old one stops updating and appearance rules stop firing. Keep `AddOrReplace` for building a fresh collection to send to the server, and for initial defaults in `InitializeAsync`. Don't write a private "set it if it exists, otherwise add it" helper; a one-line wrapper over `FiltersHelper.SetValue` is fine when a controller sets many fields.
 
 ### Prompts and messages
 
