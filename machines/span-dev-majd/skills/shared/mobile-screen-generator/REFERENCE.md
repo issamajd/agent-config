@@ -277,6 +277,14 @@ The route is the screen's path from its menu root. Every page in the path needs 
 - Without: `await RunControllerActionAsync(controller.Call{Action}Async)`.
 - Hand-write a handler only when the flow branches between validation and the call (a confirmation prompt, a success message, several outcomes). Then use `ValidatePageAsync("{Action}")` + `DisplayValidationErrorsAsync(result)`.
 
+### Side margins
+
+Inset every block that sits on the page background (banner, `UIFormCard`, stat strips, tab views, grids, a lone button, the action bar) by `ThemeConstants.Spacing.PageGutter` (12dp) at both sides, so their edges line up; `UIFormCard` already does. A block inside a card or tab gets no side margin: its container insets it. `DataGridConfiguration.Margin` is one number for all sides, so set it to 0 and give the grid a `Thickness` afterwards. A `UIStackLayout` that only stacks blocks needs `Padding = 0`, because the theme pads every stack by 3dp.
+
+### Editors are rebuilt on every appearance
+
+`BaseContentPage.OnAppearing` removes the metadata editors and builds new ones, but the old editors stay alive. Don't bind an editor property to a view model that outlives the page; a replaced editor still bound to it lays out its disposed native view when the value changes, and the app crashes. Set the property on the current editor (`GetControl(...)`) when the value changes instead. A `TextChanged` handler also fires when a removed editor blanks its text, so ignore senders whose `BindingContext` is null.
+
 ### Server calls with exact filters
 
 `ModelIO.Instance.ExecuteActionAsync<T>(bp, method, params object[] args)` passes `args` straight to the BP method, so send exactly what that method declares: a BL `Execute(filters)` takes one collection, a CRUD `Get`/`Refresh(constraints, parameters)` takes two. Check the method in the logic project when the spec doesn't say.
