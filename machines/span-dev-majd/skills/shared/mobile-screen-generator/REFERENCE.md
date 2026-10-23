@@ -405,6 +405,8 @@ private IndexedObjectCollection<DataDefinition> Columns() =>
 
 Fill it with `Model.SetModelData(ds.Tables[0])`; rows become `ExpandoObject`s, so read a tapped row as `(IDictionary<string, object>)e.Item` (see `MoveSearchResultPage` in rnditmscore). Hide it until there is data when the spec says so. Clear `grid.SelectedItem` in `BeforeOnAppearing`.
 
+Column widths: leave them out. The grid sizes each text column to its widest value or caption, gives spare room to the text columns, and scrolls sideways when they don't fit. A `MinWidth` on a text column only makes it wider than its content, and `StandardColumnMinWidth` forces one floor on every column, so set neither. Template columns (icons, images, commands) aren't measured, so give them a fixed `MinWidth` and `MaxWidth`, and pass `TemplateColumnMaxWidth = null` when they need more than the default 50dp.
+
 ### Cards grid
 
 For `CardsGrid` / `PanelAndCardsGrid`: card fields come from rows with `GRIDINCLUDE = 1`; the page provides `CardsGridParentContainer` (the name of a container in `BuildPageLayout`), `GetCardsGridItemsSourceBinding()` (e.g. `nameof(VM.Rows)`; items must support `[COLUMN]` indexing, like `DataTable.Rows`), and optionally `GetCardsGridTapAction()`, `GetCardsGridEmptyViewText()`, `CreateCardsGridConfiguration(fields)`.
