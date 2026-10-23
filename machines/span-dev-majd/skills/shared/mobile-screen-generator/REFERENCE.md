@@ -256,6 +256,8 @@ namespace {App}.pages.{Feature}
 
 `UIButtonBuilderHelper.BuildButton` translates its caption; don't wrap it in `GlobalizationHelper`. Several buttons: `ActionGridBuilderHelper.BuildHorizontalButtonActionGrid(...)` / `BuildVerticalButtonActionGrid(...)`, or a `UIGrid` with columns as the existing pages do.
 
+A bottom bar with icons and roles (rndfwcore dev since October 2026): `UIButtonBuilderHelper.BuildActionButton(name, caption, ButtonRole.Primary | Secondary | Alternate, iconFile)` per button, then `ActionGridBuilderHelper.BuildActionBar(buttons)` in role order Secondary, Alternate, Primary. The bar uses equal columns with an `ActionGap` (8dp) and the page gutter, and three buttons get a smaller font so labels fit at 360dp. `UIButtonBuilderHelper.SetIcon(button, iconFile)` puts a 16dp image left of any button's caption, tinted with its text colour (draw the SVG in black). `BuildButton`'s own `IconName` takes a framework PNG instead.
+
 ### DI and route
 
 Copy the existing lines in `engines/DILoader.cs` and `AppController.cs` exactly (some apps resolve types by `nameof(...)`, others by `PageNames`/`ControllerNames` constants):
@@ -279,7 +281,15 @@ The route is the screen's path from its menu root. Every page in the path needs 
 
 ### Side margins
 
-Inset every block that sits on the page background (banner, `UIFormCard`, stat strips, tab views, grids, a lone button, the action bar) by `ThemeConstants.Spacing.PageGutter` (12dp) at both sides, so their edges line up; `UIFormCard` already does. A block inside a card or tab gets no side margin: its container insets it. `DataGridConfiguration.Margin` is one number for all sides, so set it to 0 and give the grid a `Thickness` afterwards. A `UIStackLayout` that only stacks blocks needs `Padding = 0`, because the theme pads every stack by 3dp.
+Inset every block that sits on the page background (banner, `UIFormCard`, stat strips, tab views, grids, a lone button, the action bar) by `ThemeConstants.Spacing.PageGutter` (12dp) at both sides, so their edges line up; `ThemeConstants.Spacing.PageMargin(top, bottom)` builds that margin, and `UIFormCard` already has it. A block inside a card or tab gets no side margin: its container insets it. `DataGridConfiguration.Margin` is one number for all sides, so set it to 0 and give the grid a `Thickness` afterwards. A `UIStackLayout` that only stacks blocks needs `Padding = 0`, because the theme pads every stack by 3dp.
+
+### Shared layout pieces live in the framework
+
+Don't add a per-flow or per-app layout helper (a `PVLayoutHelper`, a `{Flow}Ui`): anything another screen could use goes to rndfwcore. A component goes in `client.mobile.controls/controls` as a `UI*` control that implements `I_UIControl` (or `I_UIParentControl`). A builder goes in `client.mobile/helpers` (`UIButtonBuilderHelper`, `ActionGridBuilderHelper`), and a size or spacing number in `ThemeConstants`. Make the change in the rndfwcore repo on its own branch and PR, never under an app's `BUILD/baseruntime`; the app builds against it from rndfwcore's `BUILD\RUNTIME\dllsndroid` until a new base runtime is published. The app keeps only what is its own: icon file names in `constants/AppIcons`, colours in `constants/AppColors`.
+
+Framework pieces for this (rndfwcore dev since October 2026):
+- `UIStatStrip(name, params UIStat[])`: a white card with stats side by side, split by hairlines, and no margin of its own. `new UIStat(title, valuePath, UIStatTone, progressPath?)` binds the number to the view model, with an optional 0..1 bar. Tones: Neutral, Success (always green), and Warning and Alert (amber and red, only above zero).
+- `UIBoundLabel`: use it for text that comes from a binding. The page globalizes every `UILabel` on load by writing its Text back, which replaces the binding. Translate bound text at its source.
 
 ### Instructions banner
 
