@@ -33,7 +33,7 @@ If the container named by `DataDisplayDataDefParentContainer` (or a group's cont
 
 ## SQL metadata
 
-All tables are in the `master` schema. **Write the script the way the project's existing `screens-defs-*.sql` files are written** (re-run guards, schema prefix or not, `CREATEDBY` value, value-list style). The column lists below are the reference, not the format.
+All tables are in the `master` schema. **Write the script the way the project's existing `screens-defs-*.sql` files are written** (re-run guards, schema prefix or not, value-list style). The column lists below are the reference, not the format. One exception: every row this skill writes sets `CREATEDBY` to `'AIGenerated'` (with `CREATEDDATE` = the dialect's current date), whatever value the existing scripts use, so generated metadata can be told apart from hand-written rows.
 
 ### DATADISPLAYDEFINITION (one row per screen, required)
 
