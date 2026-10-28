@@ -399,9 +399,33 @@ UIDataGrid grid = UIDataGridBuilderHelper.BuildStandardDataGrid(Guid.NewGuid().T
 private IndexedObjectCollection<DataDefinition> Columns() =>
 [
     new DataDefinition { DataName = "{FIELD}", BindingPath = "{FIELD}", Caption = "{Label}" },
-    // numeric: DataType = DataType.Decimal; command column: EntryType = ControlTypeName.Command, Commands = { ... }
+    // numeric: DataType = DataType.Decimal; row actions: see "Row actions" below
 ];
 ```
+
+Row actions (remove, edit, cancel a row) use the framework's command column. Don't hand-build icons or replace the column's `DisplayTemplate`:
+
+```csharp
+new DataDefinition
+{
+    DataName = "ACTIONS", BindingPath = "{KEYFIELD}", Caption = "Act.",
+    EntryType = ControlTypeName.Command,
+    Commands =
+    {
+        new CommandDefinition(new Command(async (obj) =>
+        {
+            if (obj is CellData cell && cell.Item is IDictionary<string, object> row)
+                await HandleRemoveAsync(row);
+        }), CommandIcon: "Delete16"),   // red ×
+        new CommandDefinition(..., CommandIcon: "EditIcon32"),   // pencil; several commands sit side by side
+    }
+},
+```
+
+- The command receives the cell's `CellData`; the row is `cell.Item`.
+- `CommandIcon` names a PNG in the framework resources (`rndfwcore/resources/application.resources.framework/images`), not an `AppIcons` file. The button shows it at its pixel size, so pick 16 to 32 px icons: `Delete16` (red ×), `EditIcon32` (pencil). `CaptureImage64` is 96 px and spills over the next column.
+- Reference: `RetirementScanTagsPage` in rnds4assets. Set the column's `MinWidth`/`MaxWidth` after the build (about 50 for one icon, 100 for two).
+- Use a custom `DisplayTemplate` only when the cell isn't an action (a status dot, a badge), or when the framework has no small enough icon for the action (the camera: keep the command column and its command, swap only the template; see `UseSmallCameraIcon` in `PVCountResultsPage`).
 
 Fill it with `Model.SetModelData(ds.Tables[0])`; rows become `ExpandoObject`s, so read a tapped row as `(IDictionary<string, object>)e.Item` (see `MoveSearchResultPage` in rnditmscore). Hide it until there is data when the spec says so. Clear `grid.SelectedItem` in `BeforeOnAppearing`.
 
