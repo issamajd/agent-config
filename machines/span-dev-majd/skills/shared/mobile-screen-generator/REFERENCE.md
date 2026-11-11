@@ -14,7 +14,7 @@ On `OnAppearing`, `BaseContentPage` (`pages/basepages/BaseContentPage.cs`):
    3. Builds the field controls into `DataDisplayDataDefParentContainer`, grouped by `DATAGROUPNAME` (see Tabs and groups), adds a filter for every field missing from the bound collection, and binds each control to `{DataDisplayDataDefBindingPath}[FIELD].Value` (default `DynamicFilters`). Comboboxes load their lists.
    4. Builds the cards grid if the display type includes one.
    5. Applies `DATAPANELAPPEARANCEDEFINITION` conditions and subscribes to the ViewModel's `PropertyChanged` to re-apply them (only if the screen has a conditional row; see Row navigation for the catch).
-   6. `AfterOnAppearing()`: **synchronous `void`, still under the overlay**. Hook control events here (`-=` before `+=`, since it runs on every appearance). Don't prompt the user here, and don't start server calls from it unless you follow `PickDetailsPage.AfterOnAppearing` in rnditmscore (`async void` override with a try/catch around everything that shows `ShowErrorAsModalAsync`; an exception escaping an `async void` kills the app).
+   6. `AfterOnAppearing()`: **synchronous `void`, still under the overlay**. Hook control events here (`-=` before `+=`, since it runs on every appearance). Don't prompt the user here, and don't start server calls from it unless you follow `PickDetailsPage.AfterOnAppearing` in rnditmscore (`async void` override with a try/catch around everything that shows `ShowErrorAsModalAsync`; an exception escaping an `async void` kills the app). A prompt or call that must follow the load goes after the overlay: `this.Dispatcher.Dispatch(async () => await RunExclusiveAsync(...))` (`PhysicalCountConfirmPage`).
 
 If the container named by `DataDisplayDataDefParentContainer` (or a group's container) isn't in the layout, the fields are silently not built.
 
@@ -277,7 +277,8 @@ The route is the screen's path from its menu root. Every page in the path needs 
 
 - With validation rules: `await ValidateThenRunAsync("{Action}", controller.Call{Action}Async)`. It validates, shows errors, runs the call under the busy overlay and shows the error modal on failure.
 - Without: `await RunControllerActionAsync(controller.Call{Action}Async)`.
-- Hand-write a handler only when the flow branches between validation and the call (a confirmation prompt, a success message, several outcomes). Then use `ValidatePageAsync("{Action}")` + `DisplayValidationErrorsAsync(result)`.
+- Hand-write a handler only when the flow branches between validation and the call (a confirmation prompt, a success message, several outcomes). Then use `ValidatePageAsync("{Action}")` + `DisplayValidationErrorsAsync(result)`, and run the handler through `RunExclusiveAsync` (`BaseContentPage`, rndfwcore dev since November 2026): `btn.Clicked += async (s, e) => await RunExclusiveAsync(ConfirmAsync);`. It ignores a tap while another action of the page still runs and shows any exception in the error modal, so it is safe from the async-void `Clicked`. The busy overlay only covers the server call, so without it a second tap between the steps (a prompt, the snackbar, moving to the next row) runs the action again. Don't write a per-page copy of this guard. Code that only needs to know (a row's remove icon, a Clear that must not run mid-action) reads `IsActionRunning`.
+- The controller still returns `Result` (or `Result<T>` when the page needs a value back); the handler checks `IsFailure`, shows `Error` with `ShowErrorAsModalAsync` and returns, else goes on with its next step. When the server's answer is a question rather than an error (a ship rule's Warning, "cancel the previous counts?"), the controller turns it into a success value the page can ask about (`ConsolidationPageController.ConsolidateAsync` in rnditmscore returns `Result<ConsolidateOutcome>`), or the page tests `Error` for the message the server sends (`PhysicalCountConfirmPage.LoadTaskAsync`).
 
 ### Side margins
 
@@ -383,7 +384,7 @@ Used when a page works through rows one at a time (confirm each line or task). T
 - The page binds the form to it: `this.DataDisplayDataDefBindingPath = nameof(...ViewModel.Current{Row})` (and `EntityDefBindingPath` if attributes are shown).
 - The controller exposes `CanGetNextRow()`, `CanGetPreviousRow()`, `GetNext{Row}()`, `GetPrevious{Row}()`; the page enables `<` / `>` buttons from them after every move.
 - After a successful confirm, remove the row and move to the next one (or previous if it was last); when none is left, go back as the spec says.
-- A hand-written confirm handler runs from an async-void `Clicked`: guard it against a second tap while the call runs (a double tap confirms the row twice) and catch into `ShowErrorAsModalAsync`, or an exception crashes the app (`TaskMoveConfirmPage.OnConfirmAsync`).
+- Every button and row move (`<`, `>`, Confirm, Cancel) runs through `RunExclusiveAsync` (see Actions): a double tap would otherwise confirm the row twice, and quick row moves would overlap their server calls (`TaskConfirmPage` in rnditmscore).
 - Keep one edit collection per row (built once from the `DataTable`), so what the user typed on a row survives moving away and back, as legacy's bound `DataRow` did (`TaskMoveConfirmViewModel`).
 - Visibility that depends on the current row (show only the ID pair the task has) is simplest in code after each move: `GetControl(FIELD).IsVisible = ...`, the same call the appearance service makes. Derive the flags in the ViewModel and build the server filters from the same flags, so what is shown and what is sent can't drift apart.
 
@@ -439,7 +440,7 @@ For `CardsGrid` / `PanelAndCardsGrid`: card fields come from rows with `GRIDINCL
 
 - Lookup modal: `await OpenLookupAsync<LookupModalPage, LookupModalPageController>(config)`; returns null on cancel, so null-guard. Custom modals: wrap in `RunLookupGuardedAsync(...)`.
 - Lookup trigger: the field's own end icon, not a separate button: `if (GetControl(FIELD) is EditBase editor) { editor.EndIcon = ResourceHelper.GetImageSourcePNG("LookupIcon32"); editor.EndIconCommand = new Command(async () => await OpenXLookupAsync()); }`. A field filled only from the lookup is `ISREADONLY` 1; its end icon keeps working.
-- Root screen: `HideShellBackButton()`. Back that must run logic (release a task, confirm exit): `SetBackAction(asyncAction)`, which covers both the toolbar arrow and the hardware button.
+- Root screen: `HideShellBackButton()`. Back that must run logic (release a task, confirm exit): `SetBackAction(asyncAction)`, which covers both the toolbar arrow and the hardware button. It runs through the same guard as `RunExclusiveAsync`, so Back waits out a running action; pass the action itself (`SetBackAction(LeaveAsync)`), never `() => RunExclusiveAsync(LeaveAsync)`, which the guard would ignore.
 - A Cancel button on a root screen that navigates to `//Main/Menu` leaves the operation open: the next menu tap asks "New Operation Confirmation: Close Current Operation And Open New Operation?". Expect it when driving the device.
 
 ### Numeric entry

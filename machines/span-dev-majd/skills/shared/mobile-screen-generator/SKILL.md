@@ -60,6 +60,7 @@ Then check what the build can't:
 - `DATADISPLAYNAME` in the SQL equals `nameof(Page)`.
 - Every route level is registered, and both the page and the controller are in DI.
 - Each `ValidateThenRunAsync` action name equals an `ACTIONNAME` in the SQL.
+- Every hand-written button handler runs through `RunExclusiveAsync`, and every `SetBackAction` gets the action itself, not a `RunExclusiveAsync` wrapper (REFERENCE.md, Actions).
 - `DataDisplayDataDefParentContainer`, every named group container and `EntityDefParentContainer` exist in `BuildPageLayout` with exactly those names.
 - Every filter in a server call matches section 9a by name and type, including its "Sent when" condition.
 - If the SQL has control type overrides and the user had it applied: `BPDataPanelControlAppearanceCRUD.Refresh` returns them for the page (an empty result means the database lacks the `DefaultAppearance` row; REFERENCE.md, DATAPANELAPPEARANCEDEFINITION).
