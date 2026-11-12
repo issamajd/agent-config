@@ -182,26 +182,14 @@ namespace {App}.pages.{Feature}
             return Task.CompletedTask;
         }
 
-        // One per button or server action.
-        internal async Task<Result> Call{Action}Async()
+        // One per button or server action. ServerCall turns an exception into a failed Result with its message.
+        internal Task<Result> Call{Action}Async() => ServerCall.TryAsync(() => IsBusyFor(async () =>
         {
-            Result result = Result.Success();
-            await IsBusyFor(async () =>
-            {
-                try
-                {
-                    // Arguments = the BP method's own parameters (see Server calls).
-                    DataSet ds = await mobile.factory.ModelIO.Instance.ExecuteActionAsync<DataSet>(
-                        "{BP}", "{Method}", Build{Action}Filters());
-                    // use the result as the spec says
-                }
-                catch (Exception ex)
-                {
-                    result = Result.Failure(ex.Message, ErrorType.SystemError);
-                }
-            });
-            return result;
-        }
+            // Arguments = the BP method's own parameters (see Server calls).
+            DataSet ds = await mobile.factory.ModelIO.Instance.ExecuteActionAsync<DataSet>(
+                "{BP}", "{Method}", Build{Action}Filters());
+            // use the result as the spec says
+        }));
 
         internal Task GoTo{Target}Async() =>
             IsBusyFor(() => this.NavigationService.NavigateToAsync(
@@ -212,6 +200,8 @@ namespace {App}.pages.{Feature}
 ```
 
 The BP and method names are passed the way the project's controllers pass them (constants or literals).
+
+`ServerCall` is in `client.mobile.objects` (rndfwcore dev since November 2026), next to `Result`. Don't write a try/catch per controller method or an app copy of the helper. Anything that fails inside the call shows as the server's error, so keep page work (navigation, prompts) outside it.
 
 ### Page
 
@@ -279,7 +269,7 @@ The route is the screen's path from its menu root. Every page in the path needs 
 - With validation rules: `await ValidateThenRunAsync("{Action}", controller.Call{Action}Async)`. It validates, shows errors, runs the call under the busy overlay and shows the error modal on failure.
 - Without: `await RunControllerActionAsync(controller.Call{Action}Async)`.
 - Hand-write a handler only when the flow branches between validation and the call (a confirmation prompt, a success message, several outcomes). Then use `ValidatePageAsync("{Action}")` + `DisplayValidationErrorsAsync(result)`, and run the handler through `RunExclusiveAsync` (`BaseContentPage`, rndfwcore dev since November 2026): `btn.Clicked += async (s, e) => await RunExclusiveAsync(ConfirmAsync);`. It ignores a tap while another action of the page still runs and shows any exception in the error modal, so it is safe from the async-void `Clicked`. The busy overlay only covers the server call, so without it a second tap between the steps (a prompt, the snackbar, moving to the next row) runs the action again. Don't write a per-page copy of this guard. Code that only needs to know (a row's remove icon, a Clear that must not run mid-action) reads `IsActionRunning`.
-- The controller still returns `Result` (or `Result<T>` when the page needs a value back); the handler checks `IsFailure`, shows `Error` with `ShowErrorAsModalAsync` and returns, else goes on with its next step. When the server's answer is a question rather than an error (a ship rule's Warning, "cancel the previous counts?"), the controller turns it into a success value the page can ask about (`ConsolidationPageController.ConsolidateAsync` in rnditmscore returns `Result<ConsolidateOutcome>`), or the page tests `Error` for the message the server sends (`PhysicalCountConfirmPage.LoadTaskAsync`).
+- The controller still returns `Result` through `ServerCall.TryAsync`, or `Result<T>` through `ServerCall.TryGetAsync` when the page needs a value back. The handler stops on a failure with `if (await result.FailedAsync(ShowErrorAsModalAsync)) return;` (it shows `Error` in the error modal), else goes on with its next step. When the server's answer is a question rather than an error (a ship rule's Warning, "cancel the previous counts?"), the controller turns it into a success value the page can ask about (`ConsolidationPageController.ConsolidateAsync` in rnditmscore returns `Result<ConsolidateOutcome>`), or the page tests `Error` for the message the server sends (`PhysicalCountConfirmPage.LoadTaskAsync`).
 
 ### Side margins
 
