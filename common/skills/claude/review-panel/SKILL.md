@@ -20,22 +20,18 @@ verify, and report. You do not review the code yourself, and you fix nothing.
 
 ## Reviewers
 
-Pick by case, then launch in one turn so they run in parallel. Each reviewer
-only sees `panel-context.md` and the repo, so order would add nothing.
+Every panel runs the same two reviewers, both at high effort. Launch them in
+one turn so they run in parallel. Each only sees `panel-context.md` and the
+repo, so order would add nothing.
 
-- **opus-5.5** (`Agent`, `model: 'opus'`, label `review:opus`): the default
-  reviewer, every panel.
-- **fable-5.1** (`Agent`, `model: 'fable'`, label `review:fable`): add it when
-  the change is complex: several modules, concurrency, data migration or
-  schema, security-sensitive paths, or framework code that child repos inherit.
-- **gpt-6-astra**: add it when the user asks for an outside or second-vendor
-  opinion, or the change is broad enough that the extra minutes pay off.
-  Follow `codex-review` as written and parse its `report.md` into the schema
-  below.
+- **opus-5.5** (`Agent`, `model: 'opus'`, `effort: 'high'`, label
+  `review:opus`).
+- **gpt-6.1-sol** (`codex-runner`, label `gpt-6.1-sol:review-<topic>`): follow
+  `codex-review` as written, but tell the runner to start with
+  `--model gpt-6.1-sol --effort high`. Check that its summary says
+  `CODEX_MODEL=gpt-6.1-sol`, then parse its `report.md` into the schema below.
 
-Say which reviewers you picked and why before launching.
-
-Claude reviewers get the repo path, `panel-context.md`, this prompt, and a
+The opus reviewer gets the repo path, `panel-context.md`, this prompt, and a
 `schema` of `{ findings: [{ file, line, severity, summary, failure_scenario }] }`:
 
 ```
@@ -78,13 +74,13 @@ verified and posted (you). A reader must be able to tell which model said what.
 
 ```md
 ## Review panel (round N, <short-sha>)
-Reviewers: opus-5.5[, fable-5.1][, gpt-6-astra]. Verified and posted by <your model slug>.
+Reviewers: opus-5.5 (high), gpt-6.1-sol (high). Verified and posted by <your model slug>.
 
 ### Confirmed
-- **P1** `src/auth/session.ts:42` (opus, astra): <summary>. <failure scenario>.
+- **P1** `src/auth/session.ts:42` (opus, sol): <summary>. <failure scenario>.
 
 ### Rejected
-- `src/api/users.ts:17` (astra): <summary>. Rejected: <reason>.
+- `src/api/users.ts:17` (sol): <summary>. Rejected: <reason>.
 ```
 
 No findings: say so and name the SHA. Never post a comment per finding or a

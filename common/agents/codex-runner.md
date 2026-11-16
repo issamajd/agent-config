@@ -41,6 +41,9 @@ The most important rule is in "Never stall" below. Read it first.
   Otherwise use `impl-<short-task>` or `review-<short-task>` and state it in
   your first message. Ids are single-use.
 - **Repo path**, default the current directory.
+- **Model and effort**, optional. Pass them as `--model` and `--effort` on the
+  `start` call. Without them the run uses gpt-6-astra at the effort set in
+  `~/.codex/config.toml`.
 
 If you are reading this to run Codex inline rather than as the spawned agent,
 "caller" below means you: pick the id yourself, skip 3c, and apply section 4
@@ -126,7 +129,8 @@ signal is lost.
 
 The launch output ends with a summary block, also saved as `summary` in the
 run directory. Check it before trusting anything:
-`CODEX_EXIT=0`, `CODEX_MODEL=gpt-6-astra` with no `CODEX_MODEL_MISMATCH` line
+`CODEX_EXIT=0`, `CODEX_MODEL` naming the model you launched with (gpt-6-astra
+unless `--model` said otherwise) and no `CODEX_MODEL_MISMATCH` line
 (any other model means the pin failed and the work came from the wrong model),
 and `CODEX_RESULT=ok`. Anything else: read `raw.log` in the run directory and
 report what happened. `CODEX_REPORT_WIN` and `CODEX_RAWLOG_WIN` are the paths

@@ -18,7 +18,7 @@ How to apply:
 - Bulk/mechanical work (clear-spec implementation, data analysis, migrations): gpt-6-astra — it's effectively free.
 - gpt-6-astra is limited to four jobs: review, mechanical implementation, computer use when needed, and writing tests of any kind (tests are harmless, so more coverage is welcome). Anything beyond that needs my consent first. It never writes docs (docs repos, READMEs, specs, PR descriptions). It doesn't design or own tricky logic. Treat its code as a draft: read every diff line by line and simplify it before committing.
 - Anything user-facing (UI, copy, API design) needs taste ≥ 7.
-- Reviews of plans/implementations: fable-5.1 or opus-5.5, optionally gpt-6-astra as an extra independent perspective.
+- Reviews of plans/implementations: opus-5.5 and gpt-6.1-sol, both on high effort. The `review-panel` skill runs exactly these two.
 - Never use Haiku.
 - Claude models (sonnet-5.5, opus-5.5, fable-5.1) run via the Agent/Workflow model parameter.
 

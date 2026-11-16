@@ -23,6 +23,7 @@
 #
 # Usage:
 #   codex-run.sh start  --mode exec|review --id ID --prompt FILE [--repo DIR] [--timeout SEC]
+#                       [--model NAME] [--effort low|medium|high|xhigh]
 #   codex-run.sh watch  --id ID [--interval SEC]     # heartbeat loop, for Monitor
 #   codex-run.sh status --id ID                      # one-shot "what's happening?"
 #   codex-run.sh list                                # all known runs
@@ -41,7 +42,7 @@ case "$(uname -s)" in
 esac
 # The model every run is pinned to. Single source of truth: the flags below and
 # the CODEX_MODEL check in the summary both read it, so a model rename is a
-# one-line change here (override per run with CODEX_MODEL_PIN=...).
+# one-line change here (override per run with --model or CODEX_MODEL_PIN=...).
 CODEX_MODEL_PIN="${CODEX_MODEL_PIN:-gpt-6-astra}"
 RUNS_ROOT="${CODEX_RUNS_ROOT:-${TMPDIR:-/tmp}/codex-runs}"
 # 1500s keeps timeout + the 120s orphan margin inside the 30-minute cap of the
@@ -84,7 +85,7 @@ last_line() {
 log_size() { wc -c < "$1" 2>/dev/null || echo 0; }
 
 cmd_start() {
-  local mode="" id="" prompt="" repo="$PWD" tmo="$DEFAULT_TIMEOUT"
+  local mode="" id="" prompt="" repo="$PWD" tmo="$DEFAULT_TIMEOUT" effort=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --mode)    mode="$2";   shift 2 ;;
@@ -92,6 +93,8 @@ cmd_start() {
       --prompt)  prompt="$2"; shift 2 ;;
       --repo)    repo="$2";   shift 2 ;;
       --timeout) tmo="$2";    shift 2 ;;
+      --model)   CODEX_MODEL_PIN="$2"; shift 2 ;;
+      --effort)  effort="$2"; shift 2 ;;
       *) die "unknown flag: $1" ;;
     esac
   done
@@ -101,6 +104,9 @@ cmd_start() {
   [ -f "$prompt" ] || die "prompt file not found: $prompt"
   [ -d "$repo" ]   || die "repo dir not found: $repo"
   case "$mode" in exec|review) ;; *) die "--mode must be exec or review" ;; esac
+  # Without --effort the run takes model_reasoning_effort from ~/.codex/config.toml.
+  local effort_args=()
+  if [ -n "$effort" ]; then effort_args=(-c "model_reasoning_effort=\"$effort\""); fi
   [ -n "$TIMEOUT_BIN" ] || die "no 'timeout' or 'gtimeout' on PATH (on mac: brew install coreutils)"
 
   local dir; dir="$(run_dir "$id")"
@@ -117,7 +123,7 @@ cmd_start() {
   : > "$dir/raw.log"
   : > "$dir/report.md"
   now > "$dir/started"
-  printf 'mode=%s\nrepo=%s\ntimeout=%s\n' "$mode" "$repo" "$tmo" > "$dir/meta"
+  printf 'mode=%s\nrepo=%s\ntimeout=%s\nmodel=%s\neffort=%s\n' "$mode" "$repo" "$tmo" "$CODEX_MODEL_PIN" "${effort:-config}" > "$dir/meta"
 
   # `timeout` guarantees a terminal state: without it a wedged Codex waits
   # forever and the caller can never tell "slow" from "dead". -k 30 follows the
@@ -126,7 +132,7 @@ cmd_start() {
   local rc
   case "$mode" in
     exec)
-      "$TIMEOUT_BIN" -k 30 "$tmo" "$CODEX_BIN" ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"} -C "$repo" \
+      "$TIMEOUT_BIN" -k 30 "$tmo" "$CODEX_BIN" ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"} ${effort_args[@]+"${effort_args[@]}"} -C "$repo" \
         exec -m "$CODEX_MODEL_PIN" -s workspace-write -o "$dir/report.md" - \
         < "$dir/prompt.md" > "$dir/stdout.log" 2> "$dir/raw.log"
       rc=$?
@@ -135,8 +141,8 @@ cmd_start() {
       # `codex review` takes no -m; pin the model with -c. A scope flag and a
       # custom prompt are mutually exclusive, so scope is stated in the prompt.
       # Report goes to stdout (strip the SUCCESS teardown lines); noise to stderr.
-      "$TIMEOUT_BIN" -k 30 "$tmo" "$CODEX_BIN" ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"} -c "model=\"$CODEX_MODEL_PIN\"" \
-        -C "$repo" review - < "$dir/prompt.md" 2> "$dir/raw.log" \
+      "$TIMEOUT_BIN" -k 30 "$tmo" "$CODEX_BIN" ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"} ${effort_args[@]+"${effort_args[@]}"} \
+        -c "model=\"$CODEX_MODEL_PIN\"" -C "$repo" review - < "$dir/prompt.md" 2> "$dir/raw.log" \
         | grep -v '^SUCCESS: The process' > "$dir/report.md"
       rc=${PIPESTATUS[0]}
       ;;
