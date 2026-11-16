@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# codex-run.sh — launch and observe a Codex CLI (gpt-6-astra) run.
+# codex-run.sh — launch and observe a Codex CLI (gpt-6.1-sol) run.
 #
 # Every Codex run lives in a predictable directory so that a run can be watched
 # from OUTSIDE the process that started it (the caller, a parent agent, or a
@@ -43,7 +43,7 @@ esac
 # The model every run is pinned to. Single source of truth: the flags below and
 # the CODEX_MODEL check in the summary both read it, so a model rename is a
 # one-line change here (override per run with --model or CODEX_MODEL_PIN=...).
-CODEX_MODEL_PIN="${CODEX_MODEL_PIN:-gpt-6-astra}"
+CODEX_MODEL_PIN="${CODEX_MODEL_PIN:-gpt-6.1-sol}"
 RUNS_ROOT="${CODEX_RUNS_ROOT:-${TMPDIR:-/tmp}/codex-runs}"
 # 1500s keeps timeout + the 120s orphan margin inside the 30-minute cap of the
 # Monitor that watches a run, so ORPHANED can still be reported.

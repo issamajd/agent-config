@@ -1,11 +1,11 @@
 ---
 name: codex-implementation
 description: >-
-  Ask the Codex CLI (gpt-6-astra) to IMPLEMENT scoped code changes in the current
+  Ask the Codex CLI (gpt-6.1-sol) to IMPLEMENT scoped code changes in the current
   repository, then have Claude inspect the resulting diff and verification. This
-  is how gpt-6-astra is invoked for implementation work. Use when the user asks
-  Claude to delegate implementation to Codex or gpt-6-astra, when the
-  model-selection rubric routes the work to gpt-6-astra, or when a bounded task
+  is how gpt-6.1-sol is invoked for implementation work. Use when the user asks
+  Claude to delegate implementation to Codex or gpt-6.1-sol, when the
+  model-selection rubric routes the work to gpt-6.1-sol, or when a bounded task
   would benefit from another coding agent producing a patch. Do NOT use for
   trivial edits Claude can make directly, or for review-only work — prefer
   `codex-review` there.
@@ -13,7 +13,7 @@ description: >-
 
 # Codex Implementation
 
-Delegates a scoped change to Codex (**gpt-6-astra**) with repo write access, then
+Delegates a scoped change to Codex (**gpt-6.1-sol**) with repo write access, then
 reviews what actually landed. This skill owns the **what and when**: scoping the
 Goal, the mandatory guardrails, and the review-after policy. The **how** — the
 CLI invocation, the timeout, the completion sentinel, the progress heartbeat —
@@ -22,9 +22,9 @@ hand-roll the invocation; that is how runs go dark.
 
 ## When to use this
 
-- The user explicitly asks to delegate implementation to **Codex / gpt-6-astra**, or
+- The user explicitly asks to delegate implementation to **Codex / gpt-6.1-sol**, or
   says "have Codex build/implement/fix this."
-- The model-selection rubric routes the task to gpt-6-astra.
+- The model-selection rubric routes the task to gpt-6.1-sol.
 - A **bounded, well-scoped** task benefits from another coding agent producing a
   patch that Claude then reviews.
 
@@ -57,7 +57,7 @@ path, the repo and the run id. It owns the launch, heartbeat, never-stall rules
 and first verification pass, keeps the raw log and build output out of this
 context, and is the only safe way to run several Codex tasks at once:
 
-- Name the spawn `gpt-6-astra:<short-task>` (the Agent tool's `description`, a
+- Name the spawn `gpt-6.1-sol:<short-task>` (the Agent tool's `description`, a
   Workflow's `label`) so the UI shows the real worker.
 - For **parallel batches**, spawn one agent per batch with
   `isolation: 'worktree'` so concurrent Codex edits don't collide.
@@ -73,7 +73,7 @@ turn.
 
 Either way, never run `codex` by hand or in the foreground, and check the
 summary block (printed at launch and saved as `summary` in the run directory)
-before trusting the result: `CODEX_EXIT=0`, `CODEX_MODEL=gpt-6-astra` and
+before trusting the result: `CODEX_EXIT=0`, `CODEX_MODEL=gpt-6.1-sol` and
 `CODEX_RESULT=ok`. Anything else: read `raw.log` in the run directory and
 report what happened.
 

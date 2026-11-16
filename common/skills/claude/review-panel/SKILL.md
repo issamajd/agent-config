@@ -28,7 +28,7 @@ repo, so order would add nothing.
   `review:opus`).
 - **gpt-6.1-sol** (`codex-runner`, label `gpt-6.1-sol:review-<topic>`): follow
   `codex-review` as written, but tell the runner to start with
-  `--model gpt-6.1-sol --effort high`. Check that its summary says
+  `--effort high`. Check that its summary says
   `CODEX_MODEL=gpt-6.1-sol`, then parse its `report.md` into the schema below.
 
 The opus reviewer gets the repo path, `panel-context.md`, this prompt, and a

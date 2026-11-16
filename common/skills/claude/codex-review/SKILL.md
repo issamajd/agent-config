@@ -1,7 +1,7 @@
 ---
 name: codex-review
 description: >-
-  Ask the Codex CLI (gpt-6-astra) for an INDEPENDENT, second-pass code review of
+  Ask the Codex CLI (gpt-6.1-sol) for an INDEPENDENT, second-pass code review of
   uncommitted changes, a branch diff, a specific commit, or a described
   implementation. Use WHENEVER the user asks to "have Codex review this," wants
   "a second opinion," "another agent's take," "an independent review," or when a
@@ -11,14 +11,14 @@ description: >-
 
 # Codex Review
 
-Runs OpenAI Codex CLI (`codex review`, pinned to **gpt-6-astra**) as an
+Runs OpenAI Codex CLI (`codex review`, pinned to **gpt-6.1-sol**) as an
 independent reviewer of a diff, then relays and triages its findings. Codex
 reads the repo itself and returns a severity-tagged list of issues: a genuinely
 separate model's perspective, useful as a second pass on broad or risky changes.
 
 ## When to use this
 
-- The user explicitly asks for Codex / gpt-6-astra / "an independent review" /
+- The user explicitly asks for Codex / gpt-6.1-sol / "an independent review" /
   "a second opinion" / "another agent's take."
 - A change is broad, subtle, or high-stakes enough that a fresh outside
   perspective is worth the extra minutes. `review-panel` includes it on those
@@ -68,7 +68,7 @@ directory and every progress line.
 **Spawn the `codex-runner` agent** with `--mode review`, the prompt file, the
 repo and the run id when you are the top-level session and want the raw log
 kept out of your context, or this review is one of several things running.
-Name the spawn `gpt-6-astra:review-<topic>` (the Agent tool's `description`, a
+Name the spawn `gpt-6.1-sol:review-<topic>` (the Agent tool's `description`, a
 Workflow's `label`). It owns the launch, the heartbeat and the never-stall
 rules, and returns the summary block and `report.md` verbatim.
 
@@ -79,7 +79,7 @@ is the `start` call and the `Monitor` call from section 3, then end the turn.
 
 Either way the run takes minutes; never run `codex` in the foreground or by
 hand. The script's default timeout fits a review. The summary block must show
-`CODEX_EXIT=0`, `CODEX_MODEL=gpt-6-astra` and `CODEX_RESULT=ok`; otherwise read
+`CODEX_EXIT=0`, `CODEX_MODEL=gpt-6.1-sol` and `CODEX_RESULT=ok`; otherwise read
 `raw.log` and say what happened rather than reporting no findings.
 
 ### 4. Read and triage the findings
