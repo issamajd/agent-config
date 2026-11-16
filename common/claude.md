@@ -6,7 +6,7 @@ Rankings, higher = better. Cost reflects what I actually pay (OpenAI is near-fre
 
 | Model    | Cost | Intelligence | Taste |
 | -------- | ---- | ------------ | ----- |
-| gpt-6.1-sol  | 9    | 8            | 6     |
+| gpt-6.1-sol  | 9    | 8            | 5     |
 | sonnet-5.5 | 5    | 5            | 6     |
 | opus-5.5 | 4    | 7            | 9     |
 | fable-5.1  | 2    | 9            | 9     |
