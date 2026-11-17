@@ -9,6 +9,9 @@ The user named an interaction that looks flat. Give it a physical, material resp
 finger. Read `~/.claude/skills/smoothit/motion.md` first: it holds the definition (all six rules
 apply here), the score scale, how to capture and how the judges run.
 
+When the user asked for `smoothit` as well, this skill's mocks come first: pick the look, then
+make it smooth.
+
 You do not score anything yourself. Opus agents create the mocks. gpt-6.1-sol only judges; it
 never creates a mock or writes code. Nothing in the real component changes until the user has
 picked a mock.
@@ -49,7 +52,8 @@ make one distinct take, not a variant of another's. Give each:
   it will live.
 - The format: one self-contained HTML file at the size the control is seen at (a phone viewport
   for mobile), driven by real pointer events, springs rather than CSS durations, touch targets
-  marked `data-target` in order. With it: one line on the gestures that show it off, and a
+  marked `data-target` in order. When the real screen has a constraint the effect must cover,
+  such as the time the next screen takes to build, the mock takes a control for it. With it: one line on the gestures that show it off, and a
   native build note (how the build would do the same on the platform, such as a Skia shader for
   a lens). HTML fakes refraction with tricks the build will not use; the note keeps a mock from
   passing on something the build cannot make.
