@@ -60,9 +60,12 @@ rm -f "$out"/sheet-*.png "$out"/gesture-*.png
 
 # Simulator and phone recordings have a variable frame rate. A plain re-encode
 # re-times them and every time in the report drifts from the source, so the
-# crop passes each frame's timestamp through untouched.
+# crop passes each frame's timestamp through untouched (passthrough) and keeps
+# the source's time base (demux). Without the second, a simulator recording's
+# nominal 25/12 fps becomes the encoder's time base and every timestamp is
+# rounded to 0.48 s steps.
 if [ -n "$crop" ]; then
-  ffmpeg -v error -y -i "$video" -vf "crop=$crop" -fps_mode passthrough \
+  ffmpeg -v error -y -i "$video" -vf "crop=$crop" -fps_mode passthrough -enc_time_base demux \
     -c:v libx264 -crf 12 -pix_fmt yuv420p "$out/control.mp4" </dev/null
   video="$out/control.mp4"
 fi
@@ -75,7 +78,7 @@ STILL=0.15
 # ignores encoder noise.
 ffmpeg -v error -i "$video" \
   -vf "scale=320:-2,tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-" \
-  -f null - \
+  -fps_mode passthrough -f null - \
   | paste - - \
   | sed -E 's/.*pts_time:([0-9.]+).*YAVG=([0-9.]+).*/\1 \2/' \
   | awk 'BEGIN{print "time\tgap_ms\tenergy"} {gap = NR == 1 ? 0 : ($1 - p) * 1000; printf "%.3f\t%.0f\t%.2f\n", $1, gap, $2; p = $1}' \
