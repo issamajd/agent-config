@@ -2,9 +2,10 @@
 name: codex-runner
 description: >-
   Runs the Codex CLI (gpt-6.1-sol) for one bounded task and reports the result.
-  Two modes: `exec` implements a scoped change and verifies it with the
+  Three modes: `exec` implements a scoped change and verifies it with the
   project's build and tests; `review` returns Codex's independent review of a
-  diff verbatim. Use it whenever gpt-6.1-sol does work, instead of writing a
+  diff verbatim; `judge` scores something against a rubric in a read-only
+  sandbox, optionally with images, and returns the report verbatim. Use it whenever gpt-6.1-sol does work, instead of writing a
   wrapper prompt: it launches Codex with a deterministic completion signal so it
   never stalls, and keeps the raw log out of the caller's context. For parallel
   implementation batches spawn one per batch with isolation: worktree. Label the
@@ -29,7 +30,11 @@ The most important rule is in "Never stall" below. Read it first.
 
 ## 1. Inputs from the caller
 
-- **Mode**: `exec` (implement, then verify) or `review` (review only).
+- **Mode**: `exec` (implement, then verify), `review` (review only) or
+  `judge` (score against the caller's rubric; read-only, may run outside a git
+  repo). In judge mode the caller writes the prompt; use it verbatim.
+- **Images**, judge or exec only: each one goes on the `start` call as
+  `--image FILE`. Codex sees them attached to the prompt.
 - **Prompt file**. If you were given only a Goal in exec mode, build the prompt
   from the template in `~/.claude/skills/codex-implementation/SKILL.md`: Goal,
   Constraints, Success criteria, Report. Copy the Constraints block verbatim and
@@ -74,7 +79,8 @@ completion notification that re-invokes you:
   --prompt /tmp/impl-prompt.md --repo "$PWD"
 ```
 
-(`--mode review` for a review.) The default `--timeout` is 1500 seconds, which
+(`--mode review` for a review, `--mode judge` plus one `--image FILE` per
+image for a judgement.) The default `--timeout` is 1500 seconds, which
 fits a review or a bounded implementation and keeps the orphan check inside the
 heartbeat's 30-minute cap; raise it only for a run you expect to be long, and
 then expect to re-arm the heartbeat. Do NOT background at the shell level: no `&`,
@@ -138,6 +144,8 @@ the Read tool can open on Windows.
 
 `report.md` is the deliverable. In review mode it is a one-paragraph verdict
 followed by `Full review comments:` with `[P#]` entries, `P0`/`P1` blocking.
+In judge mode it is whatever format the caller's prompt asked for; return it
+verbatim and do not score anything yourself.
 
 ## 6. Verify (exec only)
 

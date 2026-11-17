@@ -22,11 +22,15 @@
 # an empty CODEX_PROFILE to skip the optional no-superpowers profile.
 #
 # Usage:
-#   codex-run.sh start  --mode exec|review --id ID --prompt FILE [--repo DIR] [--timeout SEC]
-#                       [--model NAME] [--effort low|medium|high|xhigh]
+#   codex-run.sh start  --mode exec|review|judge --id ID --prompt FILE [--repo DIR] [--timeout SEC]
+#                       [--model NAME] [--effort low|medium|high|xhigh] [--image FILE]...
 #   codex-run.sh watch  --id ID [--interval SEC]     # heartbeat loop, for Monitor
 #   codex-run.sh status --id ID                      # one-shot "what's happening?"
 #   codex-run.sh list                                # all known runs
+#
+# `judge` is `exec` in a read-only sandbox: Codex reads the repo and any
+# --image files (screenshots, contact sheets) and writes only its report. Use it
+# when gpt-6.1-sol scores or judges something and must not change it.
 #
 # `start` blocks until Codex exits — hand it to the Bash tool with
 # run_in_background:true so the harness tracks it and fires a completion
@@ -86,6 +90,7 @@ log_size() { wc -c < "$1" 2>/dev/null || echo 0; }
 
 cmd_start() {
   local mode="" id="" prompt="" repo="$PWD" tmo="$DEFAULT_TIMEOUT" effort=""
+  local image_args=()
   while [ $# -gt 0 ]; do
     case "$1" in
       --mode)    mode="$2";   shift 2 ;;
@@ -95,15 +100,17 @@ cmd_start() {
       --timeout) tmo="$2";    shift 2 ;;
       --model)   CODEX_MODEL_PIN="$2"; shift 2 ;;
       --effort)  effort="$2"; shift 2 ;;
+      --image)   [ -f "$2" ] || die "image not found: $2"; image_args+=(-i "$2"); shift 2 ;;
       *) die "unknown flag: $1" ;;
     esac
   done
-  [ -n "$mode" ]   || die "--mode exec|review is required"
+  [ -n "$mode" ]   || die "--mode exec|review|judge is required"
   [ -n "$id" ]     || die "--id is required"
   [ -n "$prompt" ] || die "--prompt FILE is required"
   [ -f "$prompt" ] || die "prompt file not found: $prompt"
   [ -d "$repo" ]   || die "repo dir not found: $repo"
-  case "$mode" in exec|review) ;; *) die "--mode must be exec or review" ;; esac
+  case "$mode" in exec|review|judge) ;; *) die "--mode must be exec, review or judge" ;; esac
+  if [ "$mode" = "review" ] && [ ${#image_args[@]} -gt 0 ]; then die "--image works with exec and judge, not review"; fi
   # Without --effort the run takes model_reasoning_effort from ~/.codex/config.toml.
   local effort_args=()
   if [ -n "$effort" ]; then effort_args=(-c "model_reasoning_effort=\"$effort\""); fi
@@ -131,9 +138,13 @@ cmd_start() {
   # occasionally outlive it. `watch` reports that case as ORPHANED.)
   local rc
   case "$mode" in
-    exec)
+    exec|judge)
+      # A judge only reads, so it may run outside a git repo (a scratch folder
+      # of screenshots); exec keeps Codex's repo check.
+      local sandbox_args=(-s workspace-write)
+      [ "$mode" = "judge" ] && sandbox_args=(-s read-only --skip-git-repo-check)
       "$TIMEOUT_BIN" -k 30 "$tmo" "$CODEX_BIN" ${PROFILE_ARGS[@]+"${PROFILE_ARGS[@]}"} ${effort_args[@]+"${effort_args[@]}"} -C "$repo" \
-        exec -m "$CODEX_MODEL_PIN" -s workspace-write -o "$dir/report.md" - \
+        exec -m "$CODEX_MODEL_PIN" "${sandbox_args[@]}" ${image_args[@]+"${image_args[@]}"} -o "$dir/report.md" - \
         < "$dir/prompt.md" > "$dir/stdout.log" 2> "$dir/raw.log"
       rc=$?
       ;;
