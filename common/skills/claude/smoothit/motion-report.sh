@@ -1,16 +1,28 @@
 #!/usr/bin/env bash
 #
 # motion-report.sh: turn a screen recording into what the smoothness judges
-# score: contact sheets of every burst of motion and a frame report.
+# score: contact sheets of every burst of motion and of every gesture, and a
+# frame report.
 #
-#   motion-report.sh <video> <out-dir> [--fps N] [--cols N]
+#   motion-report.sh <video> <out-dir> [--crop W:H:X:Y] [--timeline FILE] [--fps N] [--cols N]
+#
+#   --crop      cut the video down to the control (plus some room around it)
+#               before anything else; a 58 pt tab bar is unreadable on a
+#               full-screen sheet. Frame timing is kept as recorded.
+#   --timeline  one gesture per line, tab-separated: start seconds, end
+#               seconds, label (record-mock.mjs writes one). Adds one sheet per
+#               gesture, so a gesture that got no visible response still has
+#               evidence.
 #
 # Writes into <out-dir>:
+#   control.mp4     the cropped video (only with --crop)
 #   frames.tsv      time, gap since the previous frame, motion energy
 #   report.txt      motion segments and the hitches inside them
 #   sheet-NN.png    one contact sheet per motion segment, frames sampled at
 #                   --fps (default 30), read left to right, top to bottom
-#   sheets.txt      which time range and frame rate each sheet covers
+#   gesture-NN.png  one sheet per timeline gesture, at 10 fps, from 100 ms
+#                   before it starts to 600 ms after it ends
+#   sheets.txt      which time range, frame rate and gesture each sheet covers
 #
 # Motion energy is the mean luma difference from the previous frame (0 = the
 # frame repeats). A hitch is motion that stops for three or more frames in a
@@ -28,19 +40,32 @@ set -euo pipefail
 
 die() { echo "motion-report: $*" >&2; exit 2; }
 
-[ $# -ge 2 ] || die "usage: motion-report.sh <video> <out-dir> [--fps N] [--cols N]"
+[ $# -ge 2 ] || die "usage: motion-report.sh <video> <out-dir> [--crop W:H:X:Y] [--timeline FILE] [--fps N] [--cols N]"
 video="$1"; out="$2"; shift 2
-fps=30; cols=4
+fps=30; cols=4; crop=""; timeline=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --fps)  fps="$2";  shift 2 ;;
-    --cols) cols="$2"; shift 2 ;;
+    --fps)      fps="$2";      shift 2 ;;
+    --cols)     cols="$2";     shift 2 ;;
+    --crop)     crop="$2";     shift 2 ;;
+    --timeline) timeline="$2"; shift 2 ;;
     *) die "unknown flag: $1" ;;
   esac
 done
 [ -f "$video" ] || die "video not found: $video"
+[ -z "$timeline" ] || [ -f "$timeline" ] || die "timeline not found: $timeline"
 command -v ffmpeg >/dev/null || die "ffmpeg is not on PATH"
 mkdir -p "$out"
+rm -f "$out"/sheet-*.png "$out"/gesture-*.png
+
+# Simulator and phone recordings have a variable frame rate. A plain re-encode
+# re-times them and every time in the report drifts from the source, so the
+# crop passes each frame's timestamp through untouched.
+if [ -n "$crop" ]; then
+  ffmpeg -v error -y -i "$video" -vf "crop=$crop" -fps_mode passthrough \
+    -c:v libx264 -crf 12 -pix_fmt yuv420p "$out/control.mp4" </dev/null
+  video="$out/control.mp4"
+fi
 
 # Energy above MOVING counts as motion; below STILL counts as a repeated frame.
 MOVING=0.5
@@ -88,27 +113,46 @@ awk -v moving="$MOVING" -v still="$STILL" -F'\t' '
     printf "hitches total\t%d\npauses total\t%d\n", total, ptotal
   }' "$out/frames.tsv" > "$out/report.txt"
 
-# One contact sheet per segment, padded 100 ms either side so the start of the
-# motion (the response to the touch) and its settle are both in frame.
+# sheet <name> <from-seconds> <to-seconds> <fps> <label>: one contact sheet of
+# that window, logged in sheets.txt.
 : > "$out/sheets.txt"
-rm -f "$out"/sheet-*.png
+sheet() {
+  local name="$1" from="$2" to="$3" rate="$4" label="$5" len frames rows
+  from=$(awk -v s="$from" 'BEGIN{printf "%.3f", (s < 0 ? 0 : s)}')
+  len=$(awk -v f="$from" -v t="$to" 'BEGIN{printf "%.3f", t - f}')
+  frames=$(awk -v l="$len" -v r="$rate" 'BEGIN{n = int(l * r + 0.999); print (n < 1 ? 1 : n)}')
+  rows=$(( (frames + cols - 1) / cols ))
+  ffmpeg -v error -y -ss "$from" -t "$len" -i "$video" \
+    -vf "fps=$rate,scale=420:-2,tile=${cols}x${rows}:padding=4:color=red" \
+    -frames:v 1 "$out/$name" </dev/null
+  printf '%s\t%ss to %ss\t%s frames at %s fps, %s per row\t%s\n' \
+    "$name" "$from" "$to" "$frames" "$rate" "$cols" "$label" >> "$out/sheets.txt"
+}
+
+# One sheet per motion segment, padded 100 ms either side so the start of the
+# motion (the response to the touch) and its settle are both in frame.
 k=0
 if [ -f "$out/.segments" ]; then
   while read -r start end; do
     k=$((k + 1))
-    from=$(awk -v s="$start" 'BEGIN{v = s - 0.1; printf "%.3f", (v < 0 ? 0 : v)}')
-    len=$(awk -v s="$start" -v e="$end" -v f="$from" 'BEGIN{printf "%.3f", e + 0.1 - f}')
-    frames=$(awk -v l="$len" -v f="$fps" 'BEGIN{n = int(l * f + 0.999); print (n < 1 ? 1 : n)}')
-    rows=$(( (frames + cols - 1) / cols ))
-    name=$(printf 'sheet-%02d.png' "$k")
-    ffmpeg -v error -y -ss "$from" -t "$len" -i "$video" \
-      -vf "fps=$fps,scale=420:-2,tile=${cols}x${rows}:padding=4:color=red" \
-      -frames:v 1 "$out/$name" </dev/null
-    printf '%s\t%ss to %ss\t%s frames at %s fps, %s per row\n' \
-      "$name" "$from" "$(awk -v f="$from" -v l="$len" 'BEGIN{printf "%.3f", f + l}')" "$frames" "$fps" "$cols" >> "$out/sheets.txt"
+    sheet "$(printf 'sheet-%02d.png' "$k")" \
+      "$(awk -v s="$start" 'BEGIN{printf "%.3f", s - 0.1}')" \
+      "$(awk -v e="$end" 'BEGIN{printf "%.3f", e + 0.1}')" "$fps" "motion segment $k"
   done < "$out/.segments"
   rm -f "$out/.segments"
 fi
 
+# One sheet per gesture, at 10 fps so a long drag still fits on one sheet.
+g=0
+if [ -n "$timeline" ]; then
+  while IFS=$'\t' read -r start end label; do
+    case "$start" in ''|\#*) continue ;; esac
+    g=$((g + 1))
+    sheet "$(printf 'gesture-%02d.png' "$g")" \
+      "$(awk -v s="$start" 'BEGIN{printf "%.3f", s - 0.1}')" \
+      "$(awk -v e="$end" 'BEGIN{printf "%.3f", e + 0.6}')" 10 "$label"
+  done < "$timeline"
+fi
+
 cat "$out/report.txt"
-echo "sheets: $k in $out"
+echo "sheets: $k motion, $g gesture, in $out"

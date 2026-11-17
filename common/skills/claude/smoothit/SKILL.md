@@ -18,9 +18,14 @@ Name the screen, the control and the gestures (tap, hold, drag, flick, interrupt
 and find the code that draws it. If the request is vague ("the session screen"), pick the
 interaction that matters most and say which.
 
+Check whether the platform already ships the control (the iOS 26 system tab bar, native sheets,
+native navigation transitions). A native control beats a recreation on every rule; if one
+exists and switching to it changes how the product looks, ask the user before going further.
+
 ## 2. Capture before
 
-Capture it as `motion.md` describes and run `motion-report.sh`. When rule 5 matters and the
+Capture it as `motion.md` describes: the five gestures with a timeline, then `motion-report.sh`
+cropped to the control. When rule 5 matters and the
 only honest source is the user's phone, ask them for a recording with the exact gestures, and
 carry on with rules 1 to 4 from the simulator meanwhile.
 
@@ -43,10 +48,9 @@ For every rule under 8, find the cause in code, not in the symptoms. The usual o
 - Work during the gesture: a screen mounting, a query resolving or a large re-render while the
   animation runs. Defer it until the motion settles, or keep the screen mounted.
 - Not interruptible: an animation that has to finish before the next gesture registers.
-
-Before hand-building anything, check whether the platform already ships the control (the iOS 26
-system tab bar, native sheets, native navigation transitions). A native control beats a
-recreation on every rule.
+- No gesture at all: each part is its own button, so a drag across the control does nothing.
+  That needs one gesture over the whole control, which changes how it behaves; when the user
+  asked for smoothness alone, say so and confirm before building it.
 
 ## 5. Fix
 
