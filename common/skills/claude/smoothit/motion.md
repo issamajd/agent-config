@@ -61,6 +61,15 @@ no other trace.
 **Getting the app running** is the project's job, not this file's: use the project's run skill
 or notes (scratch database, ports, sign-in) and leave other sessions' servers and devices alone.
 
+**Keep the simulator signed in.** Use one dedicated simulator for motion work and reuse it: across
+rounds and across runs, never erase it, reinstall the app or sign out. Between rounds, load new
+code by reloading the JavaScript bundle (Metro's reload, or reopening the dev URL), not by a cold
+reinstall, and confirm the simulator runs the new bundle before recording. When you finish,
+shut the simulator down (it keeps its sign-in) and record its name and UDID where the project
+keeps such notes, so the next run boots it instead of building a new one. A running simulator
+costs the whole machine CPU, and a starved machine records hitches that are not there; check
+the load before a capture.
+
 **Sources:**
 
 - **iPhone** (the only source for rule 5): a screen recording made on the device. Ask the user
@@ -99,6 +108,23 @@ or notes (scratch database, ports, sign-in) and leave other sessions' servers an
   frames while something moves. Two-frame pauses are listed but not counted; in a drag they are
   usually the finger. Apple's tab bar shows 2 hitches and 5 pauses over 10 segments, so counts
   are evidence, not a verdict.
+
+## Pre-check before judging
+
+A judging round costs minutes, so do not spend one on work that visibly is not ready. Before
+calling the judges on anything you changed (a fix, a build, a revised mock), read `report.txt`
+against the timeline and open the frames around every flagged hitch:
+
+- A hitch inside a gesture, or in the 600 ms settle after it, where the frames show **the
+  control itself** freezing or jumping: not ready. Fix it and capture again.
+- A gesture whose sheet shows no response where the change should give one: not ready.
+- A hitch where the control is at rest, or where only the content behind it changes (a screen
+  switch under a settled bar): pass it to the judges. Apple's own tab bar shows two of these.
+
+This is a gate, not a score: write down what you saw and why it blocked the round, and never
+put a number on it. A blocked round does not count toward the three. After three blocked
+captures in a row, call the judges anyway and let their scores say how far off it is.
+Baselines and the native control are never pre-checked: they are scored as they are.
 
 ## The judges
 

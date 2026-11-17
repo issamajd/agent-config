@@ -63,7 +63,8 @@ Then judge them:
    mock's HTML as its source.
 3. A mock with an overall under 8 from either judge goes back to the opus agent that made it,
    with both judges' notes and any observation of your own from the frames (send to the same
-   agent so it keeps its context). Record and judge the revision with a fresh packet. At most
+   agent so it keeps its context). Record the revision, run the pre-check from `motion.md`, and
+   judge it with a fresh packet only once it passes. At most
    three rounds per mock.
 
 **The user only ever sees mocks with an overall of 8 or higher from both judges.** Publish
@@ -87,7 +88,8 @@ typecheck and tests.
 
 ## 5. Capture and score the build
 
-Same gestures, both judges, all six rules, on the simulator, and on the phone for rule 5. Done
+Same gestures, on the simulator, and on the phone for rule 5. Run the pre-check from `motion.md`
+on every capture, then both judges on all six rules once it passes. Done
 means 8 or higher on every rule and overall with **both** judges. A build that loses smoothness
 to the effect is not done: fix it with `smoothit`'s diagnosis. At most three rounds, then
 report what still falls short.

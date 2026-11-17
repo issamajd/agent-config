@@ -59,7 +59,8 @@ project's lint, typecheck and tests.
 
 ## 6. Capture and score after
 
-Same gestures, same capture setup, same judges, fresh packet. Done means every rule in scope
+Same gestures, same capture setup. Run the pre-check from `motion.md` first; only a capture that
+passes it goes to the judges, with a fresh packet. Done means every rule in scope
 scores 8 or higher with **both** judges and the overall is 8 or higher with both. Otherwise go
 back to 4 with the judges' notes, at most three rounds, then report what still falls short and
 why.
