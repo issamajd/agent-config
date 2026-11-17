@@ -68,7 +68,8 @@ reinstall, and confirm the simulator runs the new bundle before recording. When 
 shut the simulator down (it keeps its sign-in) and record its name and UDID where the project
 keeps such notes, so the next run boots it instead of building a new one. A running simulator
 costs the whole machine CPU, and a starved machine records hitches that are not there; check
-the load before a capture.
+the load before a capture (`uptime`). With the one-minute load above the machine's core count,
+wait or find what is busy; when it is not yours to stop, say so in the judges' packet.
 
 **Sources:**
 
@@ -76,8 +77,9 @@ the load before a capture.
   to record when the change needs a device; say exactly which gestures to perform. For a hard
   rule 5 number, record the device over the cable with Instruments' Animation Hitches template
   (`xcrun xctrace record --template 'Animation Hitches' --device <udid> --attach <app>`).
-- **iOS simulator**: `xcrun simctl io <udid> recordVideo --codec h264 <file>.mp4` while UI
-  automation plays the gestures. Trust it for rules 1 to 4 and 6, never for rule 5 (it renders on
+- **iOS simulator**: `xcrun simctl io <udid> recordVideo --codec hevc <file>.mp4` while UI
+  automation plays the gestures. The h264 encoder fell to about 13 fps on a loaded Mac, below
+  what rule 3 needs; hevc kept 60. Trust it for rules 1 to 4 and 6, never for rule 5 (it renders on
   the Mac's GPU). Its limits:
   - The recording shows no touches, so the timeline is the only record of where the finger was.
     Build it from the automation's own timestamps (Maestro: `--debug-output`, `commands.json`).

@@ -18,6 +18,9 @@ Name the screen, the control and the gestures (tap, hold, drag, flick, interrupt
 and find the code that draws it. If the request is vague ("the session screen"), pick the
 interaction that matters most and say which.
 
+When the user asked for `aliveit` as well, run its mock step on this interaction before any fix
+here: settle what the motion should look like first, then make that smooth.
+
 Check whether the platform already ships the control (the iOS 26 system tab bar, native sheets,
 native navigation transitions). A native control beats a recreation on every rule; if one
 exists and switching to it changes how the product looks, ask the user before going further.
@@ -57,10 +60,22 @@ For every rule under 8, find the cause in code, not in the symptoms. The usual o
 Change only what the diagnosis found. The interaction must look the same at rest. Run the
 project's lint, typecheck and tests.
 
+**A fix that changes how the motion looks is a design, not a fix.** Moving work to the UI
+thread, swapping a timer for a spring or making a mount cheaper keeps the motion's look: build
+it. A new shape, a morph, a different choreography (one surface growing into another instead
+of a crossfade) changes it, even though the screen looks the same at rest. Stop before writing
+it: build two to four animated HTML mocks of the options, replayable, in the product's look,
+and publish them with the `html-communication` skill. When the real screen has a constraint the
+motion must cover, such as the time the next screen takes to build, give the page a control for
+it, so each option shows how it fills that time. Then wait for the user's pick, and build only
+that.
+
 ## 6. Capture and score after
 
 Same gestures, same capture setup. Run the pre-check from `motion.md` first; only a capture that
-passes it goes to the judges, with a fresh packet. Done means every rule in scope
+passes it goes to the judges, with a fresh packet. After each scored round, update one page for
+the user (the `html-communication` skill, same path every round) with that round's clip, both
+judges' tables and what changed, so they can follow the run and stop it early. Done means every rule in scope
 scores 8 or higher with **both** judges and the overall is 8 or higher with both. Otherwise go
 back to 4 with the judges' notes, at most three rounds, then report what still falls short and
 why.
