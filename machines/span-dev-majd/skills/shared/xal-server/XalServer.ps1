@@ -6,9 +6,10 @@
 .DESCRIPTION
     "Start Server Console.bat" opens server.console.exe, a WinForms window with
     a Start button; the services only run after that button is clicked. This
-    script runs the batch file, waits for the window, clicks Start through UI
-    Automation, and then probes the service bus URL so a caller gets a
-    pass/fail instead of a window. Stop clicks the Stop button and closes the
+    script runs the batch file, waits for the window, clicks Start, and then
+    probes the service bus URL from server.config.xml so a caller gets a
+    pass/fail instead of a window. An error box the console shows instead
+    ("Service Broker Error") is read, closed and reported as the failure. Stop clicks the Stop button and closes the
     window, which lets ServiceStartUp.Stop() run before the process exits.
 
     Needs Windows PowerShell 5.1 (UIAutomationClient). Run it as
@@ -55,16 +56,29 @@ function Find-BuildDir([string]$Hint) {
 [string]$ExePath = Join-Path $AppsDir 'server.console.exe'
 if (-not (Test-Path $ExePath)) { throw "server.console.exe not found at $ExePath" }
 
-# Port and instance name come from SetUserVars.bat; the service bus answers at
-# http://<server>:<port>/<instance>/ServiceBus once XAL is up.
+# The service bus URL comes from the config the server actually reads
+# (RUNTIME\applications\server.config.xml, ServiceBusPortal's ServiceDescription*
+# values), so a hand-moved port is probed where it is. SetUserVars.bat is the
+# fallback for a config without them.
 function Get-BatVar([string]$File, [string]$Name) {
     [string]$line = Select-String -Path $File -Pattern "^\s*SET\s+$Name=(.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
     return $line.Trim()
 }
-[string]$userVars = Join-Path $BuildDir 'SetUserVars.bat'
-[string]$port = Get-BatVar $userVars 'APPLICATIONSERVERPORT'
-[string]$instance = Get-BatVar $userVars 'INSTANCENAME'
-[string]$ProbeUrl = "http://localhost:$port/$instance/ServiceBus"
+function Get-ConfigValue([string]$Text, [string]$Name) {
+    $m = [regex]::Match($Text, "<Value Name=`"$Name`">\s*<Order>[^<]*</Order>\s*<Data[^>]*>([^<]*)</Data>")
+    if ($m.Success) { return $m.Groups[1].Value.Trim() }
+    return ''
+}
+[string]$serverConfig = Join-Path $AppsDir 'server.config.xml'
+[string]$cfgText = if (Test-Path $serverConfig) { [System.IO.File]::ReadAllText($serverConfig) } else { '' }
+[string]$port = Get-ConfigValue $cfgText 'ServiceDescriptionServerPort'
+[string]$uri = Get-ConfigValue $cfgText 'ServiceDescriptionServerURI'
+if (-not $port -or -not $uri) {
+    [string]$userVars = Join-Path $BuildDir 'SetUserVars.bat'
+    $port = Get-BatVar $userVars 'APPLICATIONSERVERPORT'
+    $uri = "$(Get-BatVar $userVars 'INSTANCENAME')/ServiceBus"
+}
+[string]$ProbeUrl = "http://localhost:$port/$uri"
 
 # ---------------------------------------------------------------- process helpers
 function Get-ConsoleProcess {
@@ -110,14 +124,98 @@ function Get-Control($Window, [string]$AutomationId) {
     return $el
 }
 
+# Win32 side: posting the click and handling the console's message boxes. A
+# failing service makes the Start handler show a modal "Service Broker Error"
+# box; a synchronous UIA Invoke then blocks (or throws "Could not open the
+# process token"), the window's controls stop resolving, and Start never greys
+# out. Posting BM_CLICK returns at once, and the dialogs are found and read
+# through Win32, which keeps working while the form is modal.
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class XalWin32
+{
+    delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr lParam);
+    [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc cb, IntPtr lParam);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hWnd, StringBuilder sb, int max);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hWnd, StringBuilder sb, int max);
+    [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, StringBuilder lParam, uint flags, uint timeoutMs, out IntPtr result);
+
+    public const uint BM_CLICK = 0x00F5;
+    public const uint WM_CLOSE = 0x0010;
+    const uint WM_GETTEXT = 0x000D;
+    const uint SMTO_ABORTIFHUNG = 0x0002;
+
+    static string ClassOf(IntPtr h) { StringBuilder sb = new StringBuilder(256); GetClassName(h, sb, 256); return sb.ToString(); }
+    // GetWindowText reads only window titles across processes; a control's text needs WM_GETTEXT.
+    static string TitleOf(IntPtr h) { StringBuilder sb = new StringBuilder(1024); GetWindowText(h, sb, 1024); return sb.ToString(); }
+    static string TextOf(IntPtr h)
+    {
+        StringBuilder sb = new StringBuilder(4096);
+        IntPtr ignored;
+        SendMessageTimeout(h, WM_GETTEXT, (IntPtr)sb.Capacity, sb, SMTO_ABORTIFHUNG, 2000, out ignored);
+        return sb.ToString();
+    }
+
+    // Visible standard dialogs (#32770: MessageBox and friends) owned by the process.
+    public static IntPtr[] Dialogs(int processId)
+    {
+        List<IntPtr> found = new List<IntPtr>();
+        EnumWindows((h, l) =>
+        {
+            uint pid;
+            GetWindowThreadProcessId(h, out pid);
+            if (pid == processId && IsWindowVisible(h) && ClassOf(h) == "#32770") found.Add(h);
+            return true;
+        }, IntPtr.Zero);
+        return found.ToArray();
+    }
+
+    // "<title>: <static texts>" of a dialog; the MessageBox body is its Static child.
+    public static string Describe(IntPtr dialog)
+    {
+        List<string> parts = new List<string>();
+        EnumChildWindows(dialog, (h, l) =>
+        {
+            if (ClassOf(h) == "Static") { string t = TextOf(h).Trim(); if (t.Length > 0) parts.Add(t); }
+            return true;
+        }, IntPtr.Zero);
+        return TitleOf(dialog) + ": " + string.Join(" ", parts).Replace("\r", " ").Replace("\n", " ");
+    }
+}
+'@
+
 function Invoke-Control($Control) {
-    $pattern = $Control.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-    $pattern.Invoke()
+    [IntPtr]$hwnd = [IntPtr]$Control.Current.NativeWindowHandle
+    if ($hwnd -eq [IntPtr]::Zero) { throw "The '$($Control.Current.AutomationId)' button has no window handle to click." }
+    [void][XalWin32]::PostMessage($hwnd, [XalWin32]::BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero)
 }
 
-function Wait-Enabled($Window, [string]$AutomationId, [bool]$Enabled, [int]$TimeoutSec, [string]$What) {
+# Reads and closes every message box the console shows; returns their text.
+# WM_CLOSE on a MessageBox is the same as its OK (or Cancel) button.
+function Close-ErrorDialogs([System.Diagnostics.Process]$Process) {
+    [string[]]$texts = @()
+    foreach ($d in [XalWin32]::Dialogs($Process.Id)) {
+        $texts += [XalWin32]::Describe($d)
+        [void][XalWin32]::PostMessage($d, [XalWin32]::WM_CLOSE, [IntPtr]::Zero, [IntPtr]::Zero)
+    }
+    if ($texts.Count -gt 0) { Start-Sleep -Milliseconds 500 }
+    return $texts
+}
+
+function Wait-Enabled([System.Diagnostics.Process]$Process, $Window, [string]$AutomationId, [bool]$Enabled, [int]$TimeoutSec, [string]$What) {
     [datetime]$deadline = (Get-Date).AddSeconds($TimeoutSec)
     while ((Get-Date) -lt $deadline) {
+        [string[]]$dialogs = Close-ErrorDialogs $Process
+        if ($dialogs.Count -gt 0) { throw "server.console showed an error while waiting for ${What}: $($dialogs -join ' || ')" }
+        if ($Process.HasExited) { throw "server.console exited while waiting for $What (exit code $($Process.ExitCode))." }
         $el = Get-Control $Window $AutomationId
         if ($el.Current.IsEnabled -eq $Enabled) { return }
         Start-Sleep -Seconds 1
@@ -178,13 +276,22 @@ function Do-Status {
         Write-Output "NOT MANAGEABLE: server.console pid $($p.Id) runs elevated; this shell cannot drive it."
         $script:rc = 3; return
     }
+    # Status changes nothing: an open error box is reported, not closed. While
+    # it is open the window's controls do not resolve, so stop here.
+    [IntPtr[]]$dialogs = [XalWin32]::Dialogs($p.Id)
+    if ($dialogs.Count -gt 0) {
+        Write-Output "ERROR DIALOG OPEN: pid $($p.Id): $(($dialogs | ForEach-Object { [XalWin32]::Describe($_) }) -join ' || ')"
+        $script:rc = 1; return
+    }
     $win = Get-MainWindow $p 10
     [bool]$started = -not (Get-Control $win 'start').Current.IsEnabled
     [int]$code = Probe-ServiceBus
     if ($started) {
         [string[]]$names = Get-ServiceNames $win
         Write-Output "STARTED: pid $($p.Id), $($names.Count) services listed, $ProbeUrl -> HTTP $code"
-        $script:rc = 0; return
+        $script:rc = if ($code -eq 200) { 0 } else { 1 }
+        if ($code -ne 200) { Write-Warning "The service bus at $ProbeUrl answered HTTP $code, not 200." }
+        return
     }
     Write-Output "OPEN BUT NOT STARTED: pid $($p.Id), window is up, services not started ($ProbeUrl -> HTTP $code)"
     $script:rc = 1
@@ -220,6 +327,10 @@ function Do-Start {
     }
     if (Test-Elevated $p) { throw "server.console pid $($p.Id) runs elevated; this shell cannot click its Start button." }
 
+    # A box left open by an earlier run hides the window's controls; clear it first.
+    [string[]]$stale = Close-ErrorDialogs $p
+    if ($stale.Count -gt 0) { Write-Warning "closed an error box already open: $($stale -join ' || ')" }
+
     $win = Get-MainWindow $p 90
     $start = Get-Control $win 'start'
     if (-not $start.Current.IsEnabled) {
@@ -228,19 +339,25 @@ function Do-Start {
         Write-Output "clicking Start..."
         Invoke-Control $start
         # IsStarted flips (and Start greys out) only after ServiceStartUp.Start() returns.
-        Wait-Enabled $win 'start' $false $StartTimeoutSec 'the Start button to grey out (ServiceStartUp.Start to return)'
+        # A service that fails to start shows a message box instead; Wait-Enabled
+        # closes it and throws with its text ("Service Start Failed:KEYGENERATION ...").
+        Wait-Enabled $p $win 'start' $false $StartTimeoutSec 'the Start button to grey out (ServiceStartUp.Start to return)'
     }
     if ($p.HasExited) { throw "server.console exited during start-up. Check $TraceLog and the Windows event log." }
 
+    # Another repo's server can hold the same port and answer for any path, so
+    # only a 200 counts as this server's service bus.
     [int]$code = 0
     [datetime]$deadline = (Get-Date).AddSeconds(60)
-    while ($code -eq 0 -and (Get-Date) -lt $deadline) { $code = Probe-ServiceBus; if ($code -eq 0) { Start-Sleep -Seconds 2 } }
+    while ($code -ne 200 -and (Get-Date) -lt $deadline) { $code = Probe-ServiceBus; if ($code -ne 200) { Start-Sleep -Seconds 2 } }
+    [string[]]$late = Close-ErrorDialogs $p
     [string[]]$names = Get-ServiceNames $win
     [string[]]$errors = Get-NewLogErrors $logStart
     Write-Output "STARTED: pid $($p.Id), $($names.Count) services listed, $ProbeUrl -> HTTP $code"
-    if ($code -eq 0) { Write-Warning "The service bus did not answer at $ProbeUrl within 60s; the XAL or SERVICEBUSPORTAL service probably failed. Check the window and $TraceLog." }
+    if ($late.Count -gt 0) { Write-Warning "server.console showed an error after start: $($late -join ' || ')" }
+    if ($code -ne 200) { Write-Warning "The service bus at $ProbeUrl answered HTTP $code, not 200, within 60s. 0 means nothing listens there (XAL or SERVICEBUSPORTAL failed); 404 usually means another server owns the port. Check the window and $TraceLog." }
     if ($errors.Count -gt 0) { Write-Warning "New error lines in $TraceLog since launch:"; $errors | ForEach-Object { Write-Output "  $_" } }
-    $script:rc = if ($code -eq 0) { 1 } else { 0 }
+    $script:rc = if ($code -eq 200 -and $late.Count -eq 0) { 0 } else { 1 }
 }
 
 function Do-Stop {
@@ -252,12 +369,14 @@ function Do-Stop {
         $script:rc = 0; return
     }
     if (Test-Elevated $p) { throw "server.console pid $($p.Id) runs elevated; this shell cannot stop it. Use its own window." }
+    [string[]]$stale = Close-ErrorDialogs $p
+    if ($stale.Count -gt 0) { Write-Warning "closed an error box that was open: $($stale -join ' || ')" }
     $win = Get-MainWindow $p 10
     $stop = Get-Control $win 'stop'
     if ($stop.Current.IsEnabled) {
         Write-Output "clicking Stop..."
         Invoke-Control $stop
-        Wait-Enabled $win 'stop' $false 120 'the Stop button to grey out (ServiceStartUp.Stop to return)'
+        Wait-Enabled $p $win 'stop' $false 120 'the Stop button to grey out (ServiceStartUp.Stop to return)'
     }
     # Close the window through UI Automation: the form is borderless and not in
     # the taskbar, so Process.CloseMainWindow() finds no main window. WM_CLOSE

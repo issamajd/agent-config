@@ -28,18 +28,31 @@ powershell.exe -NoProfile -File "$env:USERPROFILE\.claude\skills\xal-server\XalS
 
 `-Build` defaults to the nearest `BUILD` folder at or above the current
 directory, so from inside a repo you can omit it. Exit codes: 0 running (or
-stopped, for `stop`), 1 window open but services not started or the service bus
-did not answer, 2 not running, 3 a console is running that this shell cannot
-drive (see below).
+stopped, for `stop`), 1 the start failed (an error box, services not started,
+or the service bus did not answer 200), 2 not running, 3 a console is running
+that this shell cannot drive (see below).
 
 What `start` does: runs the batch file as-is (it sets the environment the
 server reads), waits for the window, clicks Start, waits for the button to grey
-out (that is `ServiceStartUp.Start()` returning), then probes
-`http://localhost:<APPLICATIONSERVERPORT>/<INSTANCENAME>/ServiceBus` from
-`SetUserVars.bat` and reports any new `Exception` lines in
+out (that is `ServiceStartUp.Start()` returning), then probes the service bus
+and reports any new `Exception` lines in
 `RUNTIME\applications\ServerLogsFromTrace.log`. A healthy start on this
 machine takes under ten seconds end to end; the wait for Start to return is
 capped at 180 s (`-StartTimeoutSec`).
+
+The probe URL is `http://localhost:<ServiceDescriptionServerPort>/<ServiceDescriptionServerURI>`
+from `RUNTIME\applications\server.config.xml`, the file the server reads, so a
+port moved there by hand (two repos' servers side by side) is probed where it
+is; `SetUserVars.bat` is only the fallback. Only HTTP 200 counts: another
+repo's server on the same port answers 404 for this instance's path.
+
+A service that fails to start (KEYGENERATION, a bad connection) makes the
+console show a modal "Service Broker Error" box instead of greying out Start.
+`start` and `stop` read that box's text, close it and fail with it (exit 1),
+e.g. `Service Start Failed:KEYGENERATION ... Counter service crashed`. The
+console may exit once the box is closed. `status` reports an open box
+(`ERROR DIALOG OPEN`) without closing it. Clicks are posted (`BM_CLICK`), so an
+open box never blocks the script.
 
 What `stop` does: clicks Stop, waits for it to grey out, then closes the window
 so the process exits cleanly. It kills the process only if the window ignores
@@ -60,4 +73,7 @@ the close for 20 s.
   this machine (Kestrel on 8001, DPAPI secrets) works without elevation.
 - One console per BUILD folder. The script only touches the process whose exe
   lives under the given BUILD; another repo's server is left alone.
+- An error box is the server's own message: fix its cause (the KEYGENERATION
+  one is usually a WAREHOUSE connection group without `CONNGRPCOLUMN` key
+  columns or `MissingColumns`) before starting again.
 - `status` opens nothing; it is safe to call any time.
