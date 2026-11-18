@@ -6,7 +6,7 @@ Rankings, higher = better. Cost reflects what I actually pay (OpenAI is near-fre
 
 | Model    | Cost | Intelligence | Taste |
 | -------- | ---- | ------------ | ----- |
-| gpt-6.1-sol  | 9    | 8            | 5     |
+| gpt-6.2-sol  | 9    | 8            | 5     |
 | sonnet-5.5 | 5    | 5            | 6     |
 | opus-5.5 | 4    | 7            | 9     |
 | fable-5.1  | 2    | 9            | 9     |
@@ -15,16 +15,16 @@ How to apply:
 
 - These are defaults, not limits. You have standing permission to override them: if a cheaper model's output doesn't meet the bar, rerun or redo the work with a smarter model without asking. Judge the output, not the price tag. Escalating costs less than shipping mediocre work.
 - Don't let cost prevent you from using the right model for the job. Instead, take advantage of cheaper options to get more information and try things before moving the work to a more expensive option.
-- Bulk/mechanical work (clear-spec implementation, data analysis, migrations): gpt-6.1-sol — it's effectively free.
-- gpt-6.1-sol is limited to four jobs: review, mechanical implementation, computer use when needed, and writing tests of any kind (tests are harmless, so more coverage is welcome). Anything beyond that needs my consent first. It never writes docs (docs repos, READMEs, specs, PR descriptions). It doesn't design or own tricky logic. Treat its code as a draft: read every diff line by line and simplify it before committing.
+- Bulk/mechanical work (clear-spec implementation, data analysis, migrations): gpt-6.2-sol — it's effectively free.
+- gpt-6.2-sol is limited to four jobs: review, mechanical implementation, computer use when needed, and writing tests of any kind (tests are harmless, so more coverage is welcome). Anything beyond that needs my consent first. It never writes docs (docs repos, READMEs, specs, PR descriptions). It doesn't design or own tricky logic. Treat its code as a draft: read every diff line by line and simplify it before committing.
 - Anything user-facing (UI, copy, API design) needs taste ≥ 7.
-- Reviews of plans/implementations: opus-5.5 and gpt-6.1-sol, both on high effort. The `review-panel` skill runs exactly these two.
+- Reviews of plans/implementations: opus-5.5 and gpt-6.2-sol, both on high effort. The `review-panel` skill runs exactly these two.
 - Never use Haiku.
 - Claude models (sonnet-5.5, opus-5.5, fable-5.1) run via the Agent/Workflow model parameter.
 
-Using gpt-6.1-sol inside workflows and subagents (the model parameter only takes Claude models):
+Using gpt-6.2-sol inside workflows and subagents (the model parameter only takes Claude models):
 - Implementation goes through the `codex-implementation` skill, reviews through `codex-review`. Both run Codex via `~/.claude/bin/codex-run.sh`, which owns the model pin, timeout and completion sentinel, normally from the `codex-runner` agent (`~/.claude/agents/common/codex-runner.md`), inline when the caller is itself a subagent. Never call `codex` by hand and never hand-roll a wrapper agent: a hand-rolled run has no sentinel and goes dark.
-- Spawn it with `subagent_type: 'codex-runner'` and a `gpt-6.1-sol:<task>` label, e.g. `{label: 'gpt-6.1-sol:review-auth'}`; the workflow UI shows the wrapper's Claude model, so the label is the only indication the real worker is gpt-6.1-sol.
+- Spawn it with `subagent_type: 'codex-runner'` and a `gpt-6.2-sol:<task>` label, e.g. `{label: 'gpt-6.2-sol:review-auth'}`; the workflow UI shows the wrapper's Claude model, so the label is the only indication the real worker is gpt-6.2-sol.
 - After launching, the runner ends its turn and is resumed by the completion notification or the heartbeat. Never emit "waiting…" and keep polling; that is what causes stalls.
-- Parallel gpt-6.1-sol implementation agents must use `isolation: 'worktree'` so codex edits don't collide in the shared checkout.
+- Parallel gpt-6.2-sol implementation agents must use `isolation: 'worktree'` so codex edits don't collide in the shared checkout.
 - Workflow token budgets only count Claude tokens; codex work is free and invisible to `budget.spent()`.

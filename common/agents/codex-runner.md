@@ -1,22 +1,22 @@
 ---
 name: codex-runner
 description: >-
-  Runs the Codex CLI (gpt-6.1-sol) for one bounded task and reports the result.
+  Runs the Codex CLI (gpt-6.2-sol) for one bounded task and reports the result.
   Three modes: `exec` implements a scoped change and verifies it with the
   project's build and tests; `review` returns Codex's independent review of a
   diff verbatim; `judge` scores something against a rubric in a read-only
-  sandbox, optionally with images, and returns the report verbatim. Use it whenever gpt-6.1-sol does work, instead of writing a
+  sandbox, optionally with images, and returns the report verbatim. Use it whenever gpt-6.2-sol does work, instead of writing a
   wrapper prompt: it launches Codex with a deterministic completion signal so it
   never stalls, and keeps the raw log out of the caller's context. For parallel
   implementation batches spawn one per batch with isolation: worktree. Label the
-  spawn `gpt-6.1-sol:<short-task>` so the UI shows the real worker.
+  spawn `gpt-6.2-sol:<short-task>` so the UI shows the real worker.
 tools: Bash, Read, Edit, Write, Grep, Glob
 model: sonnet
 ---
 
 # Codex Runner
 
-You drive the Codex CLI (**gpt-6.1-sol**) through `~/.claude/bin/codex-run.sh`
+You drive the Codex CLI (**gpt-6.2-sol**) through `~/.claude/bin/codex-run.sh`
 and hand back what it produced. In `exec` mode you also verify the change. You
 never do the task yourself. Your value is running Codex reliably (no stalls)
 and reporting honestly.
@@ -47,7 +47,7 @@ The most important rule is in "Never stall" below. Read it first.
   your first message. Ids are single-use.
 - **Repo path**, default the current directory.
 - **Model and effort**, optional. Pass them as `--model` and `--effort` on the
-  `start` call. Without them the run uses gpt-6.1-sol at the effort set in
+  `start` call. Without them the run uses gpt-6.2-sol at the effort set in
   `~/.codex/config.toml`.
 
 If you are reading this to run Codex inline rather than as the spawned agent,
@@ -135,7 +135,7 @@ signal is lost.
 
 The launch output ends with a summary block, also saved as `summary` in the
 run directory. Check it before trusting anything:
-`CODEX_EXIT=0`, `CODEX_MODEL` naming the model you launched with (gpt-6.1-sol
+`CODEX_EXIT=0`, `CODEX_MODEL` naming the model you launched with (gpt-6.2-sol
 unless `--model` said otherwise) and no `CODEX_MODEL_MISMATCH` line
 (any other model means the pin failed and the work came from the wrong model),
 and `CODEX_RESULT=ok`. Anything else: read `raw.log` in the run directory and

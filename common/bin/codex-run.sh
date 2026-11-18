@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# codex-run.sh — launch and observe a Codex CLI (gpt-6.1-sol) run.
+# codex-run.sh — launch and observe a Codex CLI (gpt-6.2-sol) run.
 #
 # Every Codex run lives in a predictable directory so that a run can be watched
 # from OUTSIDE the process that started it (the caller, a parent agent, or a
@@ -30,7 +30,7 @@
 #
 # `judge` is `exec` in a read-only sandbox: Codex reads the repo and any
 # --image files (screenshots, contact sheets) and writes only its report. Use it
-# when gpt-6.1-sol scores or judges something and must not change it.
+# when gpt-6.2-sol scores or judges something and must not change it.
 #
 # `start` blocks until Codex exits — hand it to the Bash tool with
 # run_in_background:true so the harness tracks it and fires a completion
@@ -47,7 +47,7 @@ esac
 # The model every run is pinned to. Single source of truth: the flags below and
 # the CODEX_MODEL check in the summary both read it, so a model rename is a
 # one-line change here (override per run with --model or CODEX_MODEL_PIN=...).
-CODEX_MODEL_PIN="${CODEX_MODEL_PIN:-gpt-6.1-sol}"
+CODEX_MODEL_PIN="${CODEX_MODEL_PIN:-gpt-6.2-sol}"
 RUNS_ROOT="${CODEX_RUNS_ROOT:-${TMPDIR:-/tmp}/codex-runs}"
 # 1500s keeps timeout + the 120s orphan margin inside the 30-minute cap of the
 # Monitor that watches a run, so ORPHANED can still be reported.

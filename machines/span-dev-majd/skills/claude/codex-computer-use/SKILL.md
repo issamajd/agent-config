@@ -60,7 +60,7 @@ For another app, read `ApplicationId` from its csproj.
   when focus leaves the package (the app's own dialogs count as inside). There
   is no bypass flag; cross-app testing is out of scope.
 - **Model:** the wrapper passes no `-m`; the run banner (stderr log) shows the
-  resolved default from `~/.codex/config.toml` (gpt-6.1-sol, reasoning effort
+  resolved default from `~/.codex/config.toml` (gpt-6.2-sol, reasoning effort
   high, per the template).
 - **Multiline `-Task` is only safe because the wrapper pipes the prompt to
   `codex exec -` via stdin.** Never "simplify" it back to a positional prompt

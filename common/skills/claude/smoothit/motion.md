@@ -28,7 +28,7 @@ leaves; nothing loops, pulses or shimmers while idle (that pegs the GPU and heat
 The reference is Apple's iOS 26 tab bar as WhatsApp ships it: a glass lens on press that
 follows the finger across tabs, magnifies the icon under it, and shrinks back into the
 selection pill on release. A simulator capture of Apple's bar through this pipeline scored 9
-(opus) and 8 (gpt-6.1-sol), so the pipeline can recognise the real thing.
+(opus) and 8 (gpt-6.2-sol), so the pipeline can recognise the real thing.
 
 ## Score scale
 
@@ -136,11 +136,11 @@ launched in the same turn so they run in parallel:
 - **opus-5.5**: `Agent`, `model: 'opus'`, `effort: 'high'`, label `judge:opus-<topic>`. It reads
   the images itself with the Read tool. The Agent tool takes no schema, so the JSON shape is in
   the prompt; save its reply to a file.
-- **gpt-6.1-sol**: `codex-runner`, label `gpt-6.1-sol:judge-<topic>`, `--mode judge
+- **gpt-6.2-sol**: `codex-runner`, label `gpt-6.2-sol:judge-<topic>`, `--mode judge
   --effort high`, one `--image FILE` flag per sheet, each written out in full. Check its summary
-  says `CODEX_MODEL=gpt-6.1-sol`. If the runner has not handed back after the run finished, read
+  says `CODEX_MODEL=gpt-6.2-sol`. If the runner has not handed back after the run finished, read
   the result yourself: `~/.claude/bin/codex-run.sh status --id <id>`, then `report.md` in the run
-  directory. gpt-6.1-sol only ever judges in these skills; it never creates a mock, writes a fix
+  directory. gpt-6.2-sol only ever judges in these skills; it never creates a mock, writes a fix
   or edits a file.
 
 Each judge gets the same packet and nothing else: the right prompt below, the sheets,
