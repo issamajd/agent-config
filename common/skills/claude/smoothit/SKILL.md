@@ -1,6 +1,6 @@
 ---
 name: smoothit
-description: Make a UI interaction feel smooth. Records it, has opus and gpt-6.1-sol judges score it against the motion definition (instant, attached, continuous, physical, no dropped frames), fixes the causes in code, and proves the fix with a second scored recording. Use when the user types /smoothit or says a screen, control or gesture feels dull, laggy, janky, stiff or not smooth. For making it look alive (glass, stretch, magnify), use aliveit.
+description: Make a UI interaction feel smooth. Records it, has opus and gpt-6.2-sol judges score it against the motion definition (instant, attached, continuous, physical, no dropped frames), fixes the causes in code, and proves the fix with a second scored recording. Use when the user types /smoothit or says a screen, control or gesture feels dull, laggy, janky, stiff or not smooth. For making it look alive (glass, stretch, magnify), use aliveit.
 ---
 
 # smoothit
@@ -9,7 +9,7 @@ The user named an interaction that feels dull. Make it feel right without changi
 looks. Read `motion.md` beside this file first: it holds the definition (rules 1 to 5 are this
 skill's scope), the score scale, how to capture and how the judges run.
 
-You do not score anything yourself, and gpt-6.1-sol only judges. You, or an opus agent for a
+You do not score anything yourself, and gpt-6.2-sol only judges. You, or an opus agent for a
 large change, write every fix.
 
 ## 1. Pin down the interaction

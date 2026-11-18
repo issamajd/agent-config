@@ -1,6 +1,6 @@
 ---
 name: aliveit
-description: Make a UI interaction look alive: glass, stretch, magnify, a material response to the finger like the iOS 26 tab bar. Checks for a native control first, scores the current interaction with opus and gpt-6.1-sol judges, has opus agents build motion mocks, shows the user only mocks both judges score 8/10 or higher, then builds the pick and scores it again. Use when the user types /aliveit or says something looks flat, static, lifeless or not premium. For lag and jank alone, use smoothit.
+description: Make a UI interaction look alive: glass, stretch, magnify, a material response to the finger like the iOS 26 tab bar. Checks for a native control first, scores the current interaction with opus and gpt-6.2-sol judges, has opus agents build motion mocks, shows the user only mocks both judges score 8/10 or higher, then builds the pick and scores it again. Use when the user types /aliveit or says something looks flat, static, lifeless or not premium. For lag and jank alone, use smoothit.
 ---
 
 # aliveit
@@ -12,7 +12,7 @@ apply here), the score scale, how to capture and how the judges run.
 When the user asked for `smoothit` as well, this skill's mocks come first: pick the look, then
 make it smooth.
 
-You do not score anything yourself. Opus agents create the mocks. gpt-6.1-sol only judges; it
+You do not score anything yourself. Opus agents create the mocks. gpt-6.2-sol only judges; it
 never creates a mock or writes code. Nothing in the real component changes until the user has
 picked a mock.
 

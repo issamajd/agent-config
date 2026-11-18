@@ -26,10 +26,10 @@ repo, so order would add nothing.
 
 - **opus-5.5** (`Agent`, `model: 'opus'`, `effort: 'high'`, label
   `review:opus`).
-- **gpt-6.1-sol** (`codex-runner`, label `gpt-6.1-sol:review-<topic>`): follow
+- **gpt-6.2-sol** (`codex-runner`, label `gpt-6.2-sol:review-<topic>`): follow
   `codex-review` as written, but tell the runner to start with
   `--effort high`. Check that its summary says
-  `CODEX_MODEL=gpt-6.1-sol`, then parse its `report.md` into the schema below.
+  `CODEX_MODEL=gpt-6.2-sol`, then parse its `report.md` into the schema below.
 
 The opus reviewer gets the repo path, `panel-context.md`, this prompt, and a
 `schema` of `{ findings: [{ file, line, severity, summary, failure_scenario }] }`:
@@ -74,7 +74,7 @@ verified and posted (you). A reader must be able to tell which model said what.
 
 ```md
 ## Review panel (round N, <short-sha>)
-Reviewers: opus-5.5 (high), gpt-6.1-sol (high). Verified and posted by <your model slug>.
+Reviewers: opus-5.5 (high), gpt-6.2-sol (high). Verified and posted by <your model slug>.
 
 ### Confirmed
 - **P1** `src/auth/session.ts:42` (opus, sol): <summary>. <failure scenario>.
